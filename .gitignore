@@ -10,8 +10,9 @@
 /results/figures/
 /results/benchmarks/*.tmp
 
-# OS / editor cruft
+# OS / editor / tooling cruft
 .DS_Store
 Thumbs.db
 *.swp
 .vscode/
+.claude/
