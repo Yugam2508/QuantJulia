@@ -1,0 +1,17 @@
+name = "QuantJulia"
+uuid = "7d9bc2cd-76b6-4109-ac5f-ec8eb777f27b"
+authors = ["yjv25"]
+version = "0.1.0"
+
+[deps]
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+
+[compat]
+SpecialFunctions = "2"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
