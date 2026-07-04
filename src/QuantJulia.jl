@@ -8,8 +8,11 @@ using SpecialFunctions: erf
 include("blackscholes.jl")
 include("heston.jl")
 include("fourier.jl")
+include("cboe.jl")
+include("calibration.jl")
 
 export normal_cdf, bs_price, bs_vega, bs_delta, implied_vol
 export HestonParams, heston_cf, price_from_cf, heston_price
+export read_cboe, prepare_chain, calibrate_heston, heston_loss
 
 end # module
