@@ -6,7 +6,10 @@ module QuantJulia
 using SpecialFunctions: erf
 
 include("blackscholes.jl")
+include("heston.jl")
+include("fourier.jl")
 
 export normal_cdf, bs_price, bs_vega, bs_delta, implied_vol
+export HestonParams, heston_cf, price_from_cf, heston_price
 
 end # module
