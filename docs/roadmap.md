@@ -7,11 +7,14 @@ function swap.
 
 ## Where the code actually is
 
-Week 0 → 1. The repo currently contains only the Black-Scholes warm-up scaffold
-(stubs + tests). Nothing downstream exists yet. The rough-Heston plan is real,
-but it is the *sequel*; it cannot start until the classical Fourier pricer below
-passes its tests, because **that pricer is the test harness for the rough
-extension** (at H = 1/2 rough Heston must reproduce classical Heston exactly).
+Stages 1–3 are complete and tested (94 tests): Black-Scholes + safeguarded
+implied-vol inversion, the Heston CF in little-trap form, and the
+model-agnostic Fourier pricer with AD gradients verified against finite
+differences. Stage 4 (SPX data + calibration) is next and is blocked on a
+data-source decision. Before Stage 6 can start, published Heston price values
+must be pinned as tests (currently the CF is validated by structural
+identities — martingale, ξ→0 collapse, branch continuity — not literature
+numbers). Per-stage derivation notes live in `docs/notes/`.
 
 ## Stages
 
