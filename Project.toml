@@ -4,14 +4,18 @@ authors = ["yjv25"]
 version = "0.1.0"
 
 [deps]
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
+ForwardDiff = "0.10, 1"
+QuadGK = "2"
 SpecialFunctions = "2"
 julia = "1.10"
 
 [extras]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "ForwardDiff"]

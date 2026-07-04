@@ -3,4 +3,6 @@ using Test
 
 @testset "QuantJulia" begin
     include("test_blackscholes.jl")
+    include("test_heston.jl")
+    include("test_fourier.jl")
 end
