@@ -104,3 +104,10 @@ fractional ODE solver will be hand-rolled rather than pulled from a package.
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md).
+
+## Companion repo
+
+[variance-risk-premium](https://github.com/Yugam2508/variance-risk-premium) —
+this repo builds models *of* implied volatility; that one measures the premium
+*inside* it: 36 years of VIX² vs realized variance, with honest accounting of
+the crash months that pay for it.
