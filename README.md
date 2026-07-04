@@ -74,6 +74,26 @@ julia --project=. -e 'import Pkg; Pkg.test()'
 
 The tests are written first; you implement `src/blackscholes.jl` until they pass.
 
+## Reproducing everything
+
+```
+# 0. environment (Julia ≥ 1.10)
+julia --project=. -e 'import Pkg; Pkg.instantiate()'
+
+# 1. tests — 194 gates, ~6 min (includes a Monte Carlo cross-check)
+julia --project=. -e 'import Pkg; Pkg.test()'
+
+# 2. data — download the CBOE SPX chain per data/README.md, then:
+julia --project=. scripts/01_prepare_data.jl          # parse, filter, implied vols
+julia --project=. scripts/02_calibrate.jl             # classical Heston fit (~1 min)
+julia --project=. scripts/03_calibrate_rough.jl       # rough vs classical duel (~2 min)
+julia --project=. scripts/04_short_end_and_powerlaw.jl # short-end duel + market H (~6 min)
+```
+
+Outputs land in `results/*.csv` (committed, so the numbers in this README are
+inspectable without rerunning). The market snapshot itself is not
+redistributed; `data/README.md` documents the exact download.
+
 ## Design constraint carried from day one
 
 Everything is written to stay **automatic-differentiation friendly** — functions
