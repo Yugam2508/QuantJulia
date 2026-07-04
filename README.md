@@ -8,12 +8,28 @@ same Fourier pricing / implied-vol / calibration machinery is written once and
 reused across models — the only thing that changes between models is the
 characteristic function.
 
-> **Status: Stages 1–4 complete** (120 tests green). Classical Heston is
-> calibrated to a real SPX chain (11,858 OTM quotes, 50 expiries, 2026-07-02):
-> full-chain IV RMSE 130 bps, with the classic failure signature — 150–500 bps
-> at short maturities vs ~30 bps in the belly — which is exactly the gap the
-> rough-Heston extension (Stages 6–8) targets. See `docs/notes/` for the
-> per-stage reasoning and `results/classical_fit.csv` for the fit.
+> **Status: complete** (194 tests green). Classical and rough Heston are both
+> calibrated to a real SPX chain (11,858 OTM quotes, 50 expiries, 2026-07-02
+> close), with a hand-rolled implicit fractional Riccati solver, AD gradients
+> through everything including the Hurst exponent, and a five-gate validation
+> stack anchored by exact α→1 classical recovery.
+>
+> **Headline results (the honest version):** the market's own ATM-skew term
+> structure follows the rough power law with **H ≈ 0.107** (model-free fit,
+> squarely in the literature range) — but vega-weighted calibration on this
+> weekend snapshot does **not** select roughness: rough ties classical
+> (134 vs 134 bps full-chain) and H runs to its bound, because front-end
+> calendar-time distortions (non-monotone skews across daily expiries)
+> dominate the loss and leave H unidentified. Full reading in
+> [docs/rough_heston.md](docs/rough_heston.md).
+
+| | classical | rough |
+|---|---|---|
+| full-chain IV RMSE (11,858 quotes) | 133.6 bps | 134.1 bps |
+| short-end IV RMSE (T ≤ 0.16) | 157.6 bps | 157.6 bps |
+| calibrated H | — | 0.49 (at bound) |
+| market skew power law | — | **H ≈ 0.107** (model-free) |
+| calibration wall time (192 quotes) | 9 s | 68 s |
 
 ## Layout
 
@@ -24,11 +40,14 @@ src/
   heston.jl          # Stage 2 — Heston CF, little-trap form           ✅
   fourier.jl         # Stage 3 — model-agnostic Gil-Pelaez pricer      ✅
   cboe.jl            # Stage 4 — CBOE parser, filters, parity forwards ✅
-  calibration.jl     # Stage 4 — vega-weighted loss + LBFGS/AD         ✅
-  (rough_heston.jl)  # Stage 6+ — fractional Riccati solver + rough CF
+  calibration.jl     # Stage 4/8 — vega-weighted loss + LBFGS/AD       ✅
+  fractional_riccati.jl # Stage 6 — implicit fractional solver         ✅
+  rough_heston.jl    # Stage 7 — El Euch–Rosenbaum rough CF            ✅
 scripts/
   01_prepare_data.jl # raw CBOE csv → filtered chain with implied vols
   02_calibrate.jl    # fit classical Heston, report per-expiry RMSE
+  03_calibrate_rough.jl        # rough vs classical head-to-head
+  04_short_end_and_powerlaw.jl # short-end duel + market skew power law
 test/
   runtests.jl        # + per-stage test files (120 tests)
 data/                # market data (not committed — see data/README.md)

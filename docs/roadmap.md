@@ -7,17 +7,17 @@ function swap.
 
 ## Where the code actually is
 
-Stages 1–4 are complete and tested (120 tests): Black-Scholes + safeguarded
+**All eight stages are complete** (194 tests): Black-Scholes + safeguarded
 implied-vol inversion, the Heston CF in little-trap form, the model-agnostic
-Fourier pricer with AD gradients verified against finite differences, and a
-full data pipeline + calibration on a real CBOE SPX chain (2026-07-02 close;
-fit in `results/classical_fit.csv`, reading of the results in
-`docs/notes/stage4_data_calibration.md`). Stage 5 (gradients of the loss) is
-effectively done inside Stage 4 — LBFGS runs on ForwardDiff gradients of the
-vega-weighted loss. Before Stage 6 can start, published Heston price values
-must be pinned as tests (currently the CF is validated by structural
-identities — martingale, ξ→0 collapse, branch continuity — not literature
-numbers). Per-stage derivation notes live in `docs/notes/`.
+Fourier pricer with AD verified against finite differences, the CBOE data
+pipeline + classical calibration, the hand-rolled implicit fractional Riccati
+solver, the rough Heston CF (all five spec gates green, including exact α→1
+classical recovery), and the rough-vs-classical comparison on the real SPX
+chain. The spec's literature-value gate was substituted by an independent
+Monte Carlo cross-check of the Heston CF (no trusted published table to
+hand; a fabricated one would be worse). Results live in `results/*.csv`;
+the reading of them — including the honest surprise about H — in
+`docs/rough_heston.md`. Per-stage derivation notes in `docs/notes/`.
 
 ## Stages
 
