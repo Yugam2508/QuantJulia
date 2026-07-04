@@ -8,24 +8,30 @@ same Fourier pricing / implied-vol / calibration machinery is written once and
 reused across models — the only thing that changes between models is the
 characteristic function.
 
-> **Status: in development.** Week 1 — Black-Scholes warm-up. The math functions
-> are being implemented against a test suite; see the roadmap below.
+> **Status: Stages 1–3 complete** (94 tests green): Black-Scholes + implied-vol
+> inversion, Heston characteristic function ("little trap" form), and a
+> model-agnostic Gil-Pelaez Fourier pricer with ForwardDiff gradients verified
+> end-to-end. Next: SPX data + calibration (Stage 4). See the roadmap.
 
 ## Layout
 
 ```
 src/
   QuantJulia.jl      # module
-  blackscholes.jl    # Week 1 — BSM price, Greeks, implied vol   ← current
-  (heston.jl)        # Week 2+ — Heston characteristic function
-  (fourier.jl)       # Week 2+ — Carr-Madan / Fourier pricer
-  (calibration.jl)   # Week 4+ — loss + optimizer over the vol surface
-  (rough_heston.jl)  # Week 6+ — fractional Riccati solver + rough CF
+  blackscholes.jl    # Stage 1 — BSM price, Greeks, implied vol        ✅
+  heston.jl          # Stage 2 — Heston CF, little-trap form           ✅
+  fourier.jl         # Stage 3 — model-agnostic Gil-Pelaez pricer      ✅
+  (calibration.jl)   # Stage 4+ — loss + optimizer over the vol surface
+  (rough_heston.jl)  # Stage 6+ — fractional Riccati solver + rough CF
 test/
   runtests.jl
   test_blackscholes.jl
+  test_heston.jl
+  test_fourier.jl
 docs/
   roadmap.md         # the full plan, grounded to where the code actually is
+  rough_heston_spec.md   # committed destination spec (Stages 6–8)
+  notes/             # per-stage theory notes: derivations + the "why"
 ```
 
 ## Running the tests
