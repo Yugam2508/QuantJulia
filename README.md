@@ -1,5 +1,7 @@
 # QuantJulia
 
+[![CI](https://github.com/Yugam2508/QuantJulia/actions/workflows/ci.yml/badge.svg)](https://github.com/Yugam2508/QuantJulia/actions/workflows/ci.yml)
+
 A differentiable option-pricing and volatility-calibration framework in Julia.
 
 **Story (the destination):** a differentiable calibration engine, demonstrated on
