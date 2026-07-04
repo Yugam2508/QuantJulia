@@ -63,3 +63,63 @@ argument sits where σ sits in `bs_price` — same call shape, model swapped.
 """
 heston_price(S, K, r, q, p::HestonParams, T; call::Bool = true, rtol = 1e-9) =
     price_from_cf(u -> heston_cf(u, T, p), S, K, r, q, T; call = call, rtol = rtol)
+
+# -----------------------------------------------------------------------------
+# Batch pricer on fixed Gauss-Legendre nodes.
+#
+# Key economics: ψ(u) does not depend on the strike, so ALL strikes of one
+# expiry share the same 2n CF evaluations (at u and u−i). For rough Heston,
+# where each CF evaluation is an O(N²) fractional-ODE solve, this converts
+# "O(N²) per option" into "O(N²) per expiry" — the difference between an
+# intractable and a minutes-scale calibration. Fixed nodes are also the
+# AD-cleanest quadrature: the node set never depends on the parameters, so
+# ForwardDiff differentiates a smooth deterministic sum.
+#
+# Node budget: u_max stretches with 1/(iv√T) (CF decay scale), node count with
+# u_max·max|log-moneyness| (integrand oscillation e^{ium}). `iv_hint` should
+# be a market-level vol for the expiry — it steers accuracy only, never the
+# model value being differentiated.
+# -----------------------------------------------------------------------------
+
+using LinearAlgebra: SymTridiagonal, eigen
+
+const _GL_CACHE = Dict{Int,NTuple{2,Vector{Float64}}}()
+function _gauss_legendre(n::Int)
+    get!(_GL_CACHE, n) do
+        β = [j / sqrt(4.0 * j^2 - 1) for j in 1:n-1]
+        E = eigen(SymTridiagonal(zeros(n), β))          # Golub-Welsch
+        (E.values, 2 .* abs2.(E.vectors[1, :]))
+    end
+end
+
+"""
+    batch_call_prices(ψ, F, disc, Ks, T; iv_hint=0.2, reltail=12.0, osc_pts=8.0,
+                      min_nodes=64, max_nodes=1024)
+
+Gil-Pelaez call prices for ALL strikes `Ks` of one expiry from shared CF
+evaluations on fixed Gauss-Legendre nodes. `ψ` is the de-drifted-log-return
+CF (must accept complex arguments); `F` the forward, `disc = e^{−rT}`.
+Puts follow from exact parity: `P = C − disc·(F − K)`.
+"""
+function batch_call_prices(ψ, F, disc, Ks, T; iv_hint = 0.2, reltail = 12.0,
+                           osc_pts = 8.0, min_nodes = 96, max_nodes = 1024)
+    mmax = max(maximum(K -> abs(log(F / K)), Ks), 0.05)
+    u_max = max(150.0, reltail / max(iv_hint * sqrt(T), 1e-4))
+    n = clamp(ceil(Int, osc_pts * u_max * mmax / (2π)) + 96, min_nodes, max_nodes)
+    x, w = _gauss_legendre(n)
+    us = @. 0.5 * u_max * (x + 1)
+    ws = @. 0.5 * u_max * w
+    ψ2 = [ψ(u) for u in us]
+    ψ1 = [ψ(u - im) for u in us]
+    R = typeof(real(ψ1[1]) * one(F))
+    return map(Ks) do K
+        m = log(F / K)
+        s1 = zero(R); s2 = zero(R)
+        @inbounds for i in eachindex(us)
+            ph = exp(im * us[i] * m) / (im * us[i])
+            s1 += ws[i] * real(ph * ψ1[i])
+            s2 += ws[i] * real(ph * ψ2[i])
+        end
+        disc * (F * (1 / 2 + s1 / π) - K * (1 / 2 + s2 / π))
+    end
+end

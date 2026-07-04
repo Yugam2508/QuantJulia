@@ -6,4 +6,5 @@ using Test
     include("test_heston.jl")
     include("test_fourier.jl")
     include("test_calibration.jl")
+    include("test_rough.jl")
 end
