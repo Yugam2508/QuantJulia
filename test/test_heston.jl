@@ -38,6 +38,35 @@ end
     end
 end
 
+@testset "heston_cf — independent Monte Carlo cross-check" begin
+    # Substitute for literature-value pinning (no trusted table to hand; a
+    # fabricated "published" number would be worse than none): simulate the
+    # Heston SDE directly by full-truncation Euler and compare with the
+    # Fourier price. Completely independent code path from the CF.
+    using Random
+    S, K, r, q, T = 100.0, 100.0, 0.02, 0.0, 0.5
+    p = HestonParams(2.0, 0.04, 0.5, -0.7, 0.04)
+    rng = MersenneTwister(20260704)
+    npaths, nsteps = 120_000, 500
+    Δ = T / nsteps
+    sq1mρ² = sqrt(1 - p.ρ^2)
+    payoff = zeros(npaths)
+    for i in 1:npaths
+        x = log(S); v = p.v0
+        for _ in 1:nsteps
+            vp = max(v, 0.0)
+            z1 = randn(rng); z2 = randn(rng)
+            x += (r - q - vp / 2) * Δ + sqrt(vp * Δ) * z1
+            v += p.κ * (p.θ - vp) * Δ + p.ξ * sqrt(vp * Δ) * (p.ρ * z1 + sq1mρ² * z2)
+        end
+        payoff[i] = exp(-r * T) * max(exp(x) - K, 0.0)
+    end
+    mc = sum(payoff) / npaths
+    se = sqrt(sum(abs2, payoff .- mc) / (npaths - 1)) / sqrt(npaths)
+    fourier = heston_price(S, K, r, q, p, T)
+    @test abs(fourier - mc) < 4 * se
+end
+
 @testset "heston_cf — long-maturity branch continuity (the little trap)" begin
     # The g₁ form of the CF develops 2πi phase jumps at long maturity when the
     # complex log crosses its branch cut; the g₂ form must sweep smoothly.
