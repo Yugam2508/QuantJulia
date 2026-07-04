@@ -5,4 +5,5 @@ using Test
     include("test_blackscholes.jl")
     include("test_heston.jl")
     include("test_fourier.jl")
+    include("test_calibration.jl")
 end
