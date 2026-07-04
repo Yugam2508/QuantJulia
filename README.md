@@ -8,10 +8,12 @@ same Fourier pricing / implied-vol / calibration machinery is written once and
 reused across models — the only thing that changes between models is the
 characteristic function.
 
-> **Status: Stages 1–3 complete** (94 tests green): Black-Scholes + implied-vol
-> inversion, Heston characteristic function ("little trap" form), and a
-> model-agnostic Gil-Pelaez Fourier pricer with ForwardDiff gradients verified
-> end-to-end. Next: SPX data + calibration (Stage 4). See the roadmap.
+> **Status: Stages 1–4 complete** (120 tests green). Classical Heston is
+> calibrated to a real SPX chain (11,858 OTM quotes, 50 expiries, 2026-07-02):
+> full-chain IV RMSE 130 bps, with the classic failure signature — 150–500 bps
+> at short maturities vs ~30 bps in the belly — which is exactly the gap the
+> rough-Heston extension (Stages 6–8) targets. See `docs/notes/` for the
+> per-stage reasoning and `results/classical_fit.csv` for the fit.
 
 ## Layout
 
@@ -21,13 +23,16 @@ src/
   blackscholes.jl    # Stage 1 — BSM price, Greeks, implied vol        ✅
   heston.jl          # Stage 2 — Heston CF, little-trap form           ✅
   fourier.jl         # Stage 3 — model-agnostic Gil-Pelaez pricer      ✅
-  (calibration.jl)   # Stage 4+ — loss + optimizer over the vol surface
+  cboe.jl            # Stage 4 — CBOE parser, filters, parity forwards ✅
+  calibration.jl     # Stage 4 — vega-weighted loss + LBFGS/AD         ✅
   (rough_heston.jl)  # Stage 6+ — fractional Riccati solver + rough CF
+scripts/
+  01_prepare_data.jl # raw CBOE csv → filtered chain with implied vols
+  02_calibrate.jl    # fit classical Heston, report per-expiry RMSE
 test/
-  runtests.jl
-  test_blackscholes.jl
-  test_heston.jl
-  test_fourier.jl
+  runtests.jl        # + per-stage test files (120 tests)
+data/                # market data (not committed — see data/README.md)
+results/             # committed fit results
 docs/
   roadmap.md         # the full plan, grounded to where the code actually is
   rough_heston_spec.md   # committed destination spec (Stages 6–8)
