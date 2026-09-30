@@ -10,4 +10,5 @@ using ForwardDiff
     include("test_rough.jl")
     include("test_greeks.jl")
     include("test_identification.jl")
+    include("test_svi.jl")
 end
