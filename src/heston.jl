@@ -43,6 +43,16 @@ end
 HestonParams(κ, θ, ξ, ρ, v0) = HestonParams(promote(κ, θ, ξ, ρ, v0)...)
 
 """
+    feller_ratio(p)
+
+2κθ/ξ². The Feller condition 2κθ ≥ ξ² (ratio ≥ 1) keeps the variance process
+strictly positive; below 1, v can touch zero. Calibration does not enforce it
+(see src/calibration.jl) — this is the reporting side. Works for
+`HestonParams` and `RoughHestonParams` alike (same κ, θ, ξ fields).
+"""
+feller_ratio(p) = 2 * p.κ * p.θ / p.ξ^2
+
+"""
     heston_cf(u, T, p::HestonParams)
 
 ψ(u) = E[exp(iu·X_T)] for the de-drifted log return X_T (see the convention

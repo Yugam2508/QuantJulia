@@ -75,3 +75,10 @@ end
     vals = [heston_cf(u, T, P_STD) for u in us]
     @test maximum(abs.(diff(vals))) < 0.05
 end
+
+@testset "feller_ratio" begin
+    @test feller_ratio(HestonParams(2.0, 0.04, 0.4, -0.7, 0.04)) ≈ 1.0
+    @test feller_ratio(P_STD) ≈ 2 * 2.0 * 0.04 / 0.5^2
+    @test feller_ratio(P_STD) < 1                        # typical index-fit regime
+    @test feller_ratio(RoughHestonParams(2.0, 0.04, 0.2, -0.7, 0.04, 0.1)) ≈ 4.0
+end

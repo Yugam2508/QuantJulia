@@ -39,8 +39,8 @@ p = res.params
 println("\nFitted parameters:")
 @printf("  κ  = %8.4f\n  θ  = %8.4f   (long-run vol %.1f%%)\n", p.κ, p.θ, 100sqrt(p.θ))
 @printf("  ξ  = %8.4f\n  ρ  = %8.4f\n  v0 = %8.4f   (spot vol %.1f%%)\n", p.ξ, p.ρ, p.v0, 100sqrt(p.v0))
-feller = 2p.κ * p.θ - p.ξ^2
-@printf("  Feller 2κθ−ξ² = %.4f  (%s)\n", feller, feller >= 0 ? "satisfied" : "violated — common for index fits")
+feller = feller_ratio(p)
+@printf("  Feller 2κθ/ξ² = %.4f  (%s)\n", feller, feller >= 1 ? "satisfied" : "violated — common for index fits")
 
 # --- Honest evaluation: IV RMSE per expiry on the FULL chain --------------
 println("\nFull-chain fit by expiry (model vs market IV):")
