@@ -20,5 +20,7 @@ export solve_fractional_riccati, frac_integral_end
 export RoughHestonParams, rough_heston_cf, make_rough_cf
 export read_cboe, prepare_chain, calibrate_heston, heston_loss
 export group_quotes, rough_heston_loss, calibrate_rough_heston
+export heston_residuals, heston_batch_residuals, heston_batch_loss
+export rough_heston_residuals, levenberg_marquardt
 
 end # module
