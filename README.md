@@ -10,7 +10,7 @@ same Fourier pricing / implied-vol / calibration machinery is written once and
 reused across models — the only thing that changes between models is the
 characteristic function.
 
-> **Status: complete** (194 tests green). Classical and rough Heston are both
+> **Status: complete** (229 tests green). Classical and rough Heston are both
 > calibrated to a real SPX chain (11,858 OTM quotes, 50 expiries, 2026-07-02
 > close), with a hand-rolled implicit fractional Riccati solver, AD gradients
 > through everything including the Hurst exponent, and a five-gate validation
@@ -51,7 +51,7 @@ scripts/
   03_calibrate_rough.jl        # rough vs classical head-to-head
   04_short_end_and_powerlaw.jl # short-end duel + market skew power law
 test/
-  runtests.jl        # + per-stage test files (120 tests)
+  runtests.jl        # + per-stage test files (229 tests)
 data/                # market data (not committed — see data/README.md)
 results/             # committed fit results
 docs/
@@ -82,7 +82,7 @@ The tests are written first; you implement `src/blackscholes.jl` until they pass
 # 0. environment (Julia ≥ 1.10)
 julia --project=. -e 'import Pkg; Pkg.instantiate()'
 
-# 1. tests — 194 gates, ~6 min (includes a Monte Carlo cross-check)
+# 1. tests — 229 gates, ~6 min (includes a Monte Carlo cross-check)
 julia --project=. -e 'import Pkg; Pkg.test()'
 
 # 2. data — download the CBOE SPX chain per data/README.md, then:

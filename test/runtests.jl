@@ -1,5 +1,6 @@
 using QuantJulia
 using Test
+using ForwardDiff
 
 @testset "QuantJulia" begin
     include("test_blackscholes.jl")

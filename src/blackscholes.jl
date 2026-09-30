@@ -125,6 +125,73 @@ function bs_delta(S, K, r, q, σ, T; call::Bool = true)
     return call ? disc_q * normal_cdf(d1) : disc_q * (normal_cdf(d1) - 1)
 end
 
+"""
+    bs_gamma(S, K, r, q, σ, T)
+
+∂²Price/∂S² = e^{−qT}·φ(d₁) / (S·σ·√T).  Same for calls and puts (parity is
+linear in S). Zero in the degenerate limits T ≤ 0 or σ ≤ 0, where the payoff
+is piecewise linear in S away from the kink.
+"""
+function bs_gamma(S, K, r, q, σ, T)
+    z = zero(S * K * r * q * σ * T)
+    (T <= 0 || σ <= 0) && return z
+    sqrtT = sqrt(T)
+    d1 = (log(S / K) + (r - q + σ^2 / 2) * T) / (σ * sqrtT)
+    return exp(-q * T) * normal_pdf(d1) / (S * σ * sqrtT)
+end
+
+"""
+    bs_theta(S, K, r, q, σ, T; call=true)
+
+Time decay ∂Price/∂t = −∂Price/∂T, per year (divide by 365 for per-day).
+
+    call: −S·e^{−qT}·φ(d₁)·σ/(2√T) − r·K·e^{−rT}·Φ(d₂) + q·S·e^{−qT}·Φ(d₁)
+    put:  −S·e^{−qT}·φ(d₁)·σ/(2√T) + r·K·e^{−rT}·Φ(−d₂) − q·S·e^{−qT}·Φ(−d₁)
+
+σ ≤ 0 (T > 0) differentiates the discounted forward intrinsic; T ≤ 0 returns
+zero. Degenerate cases put the exact-ATM boundary on the in-the-money side,
+as `bs_delta` does.
+"""
+function bs_theta(S, K, r, q, σ, T; call::Bool = true)
+    z = zero(S * K * r * q * σ * T)
+    T <= 0 && return z
+    Sq = S * exp(-q * T)
+    Kr = K * exp(-r * T)
+    if σ <= 0
+        itm = call ? S * exp((r - q) * T) >= K : S * exp((r - q) * T) < K
+        itm || return z
+        return call ? q * Sq - r * Kr : r * Kr - q * Sq
+    end
+    sqrtT = sqrt(T)
+    d1 = (log(S / K) + (r - q + σ^2 / 2) * T) / (σ * sqrtT)
+    d2 = d1 - σ * sqrtT
+    decay = -Sq * normal_pdf(d1) * σ / (2 * sqrtT)
+    if call
+        return decay - r * Kr * normal_cdf(d2) + q * Sq * normal_cdf(d1)
+    else
+        return decay + r * Kr * normal_cdf(-d2) - q * Sq * normal_cdf(-d1)
+    end
+end
+
+"""
+    bs_rho(S, K, r, q, σ, T; call=true)
+
+∂Price/∂r.  Call: K·T·e^{−rT}·Φ(d₂).  Put: −K·T·e^{−rT}·Φ(−d₂)  (by parity
+∂C/∂r − ∂P/∂r = K·T·e^{−rT}). Degenerate limits follow `bs_theta`.
+"""
+function bs_rho(S, K, r, q, σ, T; call::Bool = true)
+    z = zero(S * K * r * q * σ * T)
+    T <= 0 && return z
+    KTr = K * T * exp(-r * T)
+    if σ <= 0
+        itm = call ? S * exp((r - q) * T) >= K : S * exp((r - q) * T) < K
+        itm || return z
+        return call ? KTr : -KTr
+    end
+    d2 = (log(S / K) + (r - q - σ^2 / 2) * T) / (σ * sqrt(T))
+    return call ? KTr * normal_cdf(d2) : -KTr * normal_cdf(-d2)
+end
+
 # ---------------------------------------------------------------------------
 # Implied volatility: safeguarded Newton (Newton inside a bisection bracket)
 # ---------------------------------------------------------------------------

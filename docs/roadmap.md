@@ -7,7 +7,7 @@ function swap.
 
 ## Where the code actually is
 
-**All eight stages are complete** (194 tests): Black-Scholes + safeguarded
+**All eight stages are complete** (229 tests): Black-Scholes + safeguarded
 implied-vol inversion, the Heston CF in little-trap form, the model-agnostic
 Fourier pricer with AD verified against finite differences, the CBOE data
 pipeline + classical calibration, the hand-rolled implicit fractional Riccati

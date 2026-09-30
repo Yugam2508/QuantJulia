@@ -86,3 +86,61 @@ end
         @test implied_vol(px, S, K, r, q, T; call=true) ≈ σ_true rtol=1e-6
     end
 end
+
+@testset "bs_gamma — matches finite difference, same for calls and puts" begin
+    S, K, r, q, σ, T = 100.0, 105.0, 0.03, 0.01, 0.25, 0.8
+    h = 1e-3
+    for call in (true, false)
+        fd = (bs_price(S+h, K, r, q, σ, T; call) - 2bs_price(S, K, r, q, σ, T; call) +
+              bs_price(S-h, K, r, q, σ, T; call)) / h^2
+        @test bs_gamma(S, K, r, q, σ, T) ≈ fd rtol=1e-4
+    end
+    @test bs_gamma(S, K, r, q, σ, T) > 0
+    @test bs_gamma(S, K, r, q, σ, T) ≈
+          ForwardDiff.derivative(s -> bs_delta(s, K, r, q, σ, T), S)
+    @test bs_gamma(S, K, r, q, 0.0, T) == 0
+    @test bs_gamma(S, K, r, q, σ, 0.0) == 0
+end
+
+@testset "bs_theta — matches −∂/∂T, parity" begin
+    S, K, r, q, σ, T = 100.0, 95.0, 0.04, 0.015, 0.3, 1.2
+    h = 1e-6
+    for call in (true, false)
+        fd = -(bs_price(S, K, r, q, σ, T+h; call) - bs_price(S, K, r, q, σ, T-h; call)) / (2h)
+        @test bs_theta(S, K, r, q, σ, T; call) ≈ fd rtol=1e-6
+    end
+    # Θ_C − Θ_P = −∂/∂T (S·e^{−qT} − K·e^{−rT}) = q·S·e^{−qT} − r·K·e^{−rT}
+    @test bs_theta(S, K, r, q, σ, T; call=true) - bs_theta(S, K, r, q, σ, T; call=false) ≈
+          q*S*exp(-q*T) - r*K*exp(-r*T)
+    # σ → 0 limit agrees with the degenerate branch
+    for call in (true, false), K in (80.0, 120.0)
+        @test bs_theta(S, K, r, q, 1e-6, T; call) ≈ bs_theta(S, K, r, q, 0.0, T; call) atol=1e-8
+    end
+    @test bs_theta(S, K, r, q, σ, 0.0) == 0
+end
+
+@testset "bs_rho — matches finite difference, parity" begin
+    S, K, r, q, σ, T = 100.0, 110.0, 0.035, 0.0, 0.2, 2.0
+    h = 1e-6
+    for call in (true, false)
+        fd = (bs_price(S, K, r+h, q, σ, T; call) - bs_price(S, K, r-h, q, σ, T; call)) / (2h)
+        @test bs_rho(S, K, r, q, σ, T; call) ≈ fd rtol=1e-6
+    end
+    @test bs_rho(S, K, r, q, σ, T; call=true) - bs_rho(S, K, r, q, σ, T; call=false) ≈
+          K*T*exp(-r*T)
+    @test bs_rho(S, K, r, q, σ, T; call=true) > 0
+    @test bs_rho(S, K, r, q, σ, T; call=false) < 0
+    for call in (true, false), K in (80.0, 120.0)
+        @test bs_rho(S, K, r, q, 1e-6, T; call) ≈ bs_rho(S, K, r, q, 0.0, T; call) atol=1e-8
+    end
+end
+
+@testset "Greeks — agree with ForwardDiff through bs_price" begin
+    S, K, r, q, σ, T = 100.0, 102.0, 0.02, 0.01, 0.35, 0.6
+    for call in (true, false)
+        @test bs_delta(S, K, r, q, σ, T; call) ≈ ForwardDiff.derivative(s -> bs_price(s, K, r, q, σ, T; call), S)
+        @test bs_vega(S, K, r, q, σ, T)        ≈ ForwardDiff.derivative(v -> bs_price(S, K, r, q, v, T; call), σ)
+        @test bs_rho(S, K, r, q, σ, T; call)   ≈ ForwardDiff.derivative(x -> bs_price(S, K, x, q, σ, T; call), r)
+        @test bs_theta(S, K, r, q, σ, T; call) ≈ -ForwardDiff.derivative(t -> bs_price(S, K, r, q, σ, t; call), T)
+    end
+end
