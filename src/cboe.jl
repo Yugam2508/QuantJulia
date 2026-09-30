@@ -22,12 +22,98 @@
 #   5. Implied vol via Stage 1's inverter. Its DomainError on bound-violating
 #      prices IS the arbitrage filter doing its job on stale quotes.
 #
-# Simplifications (documented, revisit if they ever bind): T in calendar
-# days / 365 ignoring time-of-day; AM/PM settlement distinction (SPX vs SPXW
-# roots) ignored.
+# Simplifications (documented, revisit if they ever bind): time-of-day
+# ignored; AM/PM settlement distinction (SPX vs SPXW roots) ignored.
+#
+# Day count: T defaults to calendar days / 365. `daycount = :business` counts
+# NYSE trading days / 252 instead, so weekends and exchange holidays carry
+# no variance. For short expiries that is a first-order change: a 4-calendar-
+# day option spanning a weekend and a holiday has 1 trading day, not 4/365
+# of a year's variance — the calendar-time distortion docs/rough_heston.md
+# identifies as what leaves H unidentified.
 # =============================================================================
 
 using Dates
+
+# -----------------------------------------------------------------------------
+# NYSE holiday calendar and day counts
+# -----------------------------------------------------------------------------
+
+# Anonymous Gregorian (Meeus/Jones/Butcher) Easter Sunday.
+function _easter(y::Int)
+    a = y % 19; b = y ÷ 100; c = y % 100
+    d = b ÷ 4; e = b % 4; f = (b + 8) ÷ 25; g = (b - f + 1) ÷ 3
+    h = (19a + b - d - g + 15) % 30
+    i = c ÷ 4; k = c % 4
+    l = (32 + 2e + 2i - h - k) % 7
+    m = (a + 11h + 22l) ÷ 451
+    month = (h + l - 7m + 114) ÷ 31
+    day = (h + l - 7m + 114) % 31 + 1
+    return Date(y, month, day)
+end
+
+_nth_weekday(y, m, wd, n) = (d = Date(y, m, 1); d + Day(mod(wd - dayofweek(d), 7) + 7(n - 1)))
+_last_weekday(y, m, wd) = (d = lastdayofmonth(Date(y, m, 1)); d - Day(mod(dayofweek(d) - wd, 7)))
+# Saturday holidays are observed Friday, Sunday holidays Monday.
+_observed(d) = dayofweek(d) == Saturday ? d - Day(1) :
+               dayofweek(d) == Sunday ? d + Day(1) : d
+
+"""
+    nyse_holidays(year)
+
+Full-day NYSE closures for `year` under the current rule set: New Year's Day,
+MLK Day, Presidents' Day, Good Friday, Memorial Day, Juneteenth (from 2022),
+Independence Day, Labor Day, Thanksgiving, Christmas — with the weekend
+observance rules (a Saturday New Year's Day is NOT observed on the prior
+Friday, per NYSE rule). Ad-hoc closures (national days of mourning, weather)
+are not included; pass them to `year_fraction` via `holidays`.
+"""
+function nyse_holidays(y::Int)
+    hs = Date[]
+    ny = Date(y, 1, 1)
+    dayofweek(ny) == Sunday && push!(hs, ny + Day(1))
+    dayofweek(ny) in (Saturday, Sunday) || push!(hs, ny)
+    push!(hs, _nth_weekday(y, 1, Monday, 3))           # MLK
+    push!(hs, _nth_weekday(y, 2, Monday, 3))           # Presidents'
+    push!(hs, _easter(y) - Day(2))                     # Good Friday
+    push!(hs, _last_weekday(y, 5, Monday))             # Memorial
+    y >= 2022 && push!(hs, _observed(Date(y, 6, 19)))  # Juneteenth
+    push!(hs, _observed(Date(y, 7, 4)))                # Independence
+    push!(hs, _nth_weekday(y, 9, Monday, 1))           # Labor
+    push!(hs, _nth_weekday(y, 11, Thursday, 4))        # Thanksgiving
+    push!(hs, _observed(Date(y, 12, 25)))              # Christmas
+    return sort!(hs)
+end
+
+"""
+    business_days(d0, d1; holidays=nothing)
+
+Trading days in the half-open interval (d0, d1]: weekdays that are not
+holidays. `holidays = nothing` uses `nyse_holidays` for every year spanned.
+"""
+function business_days(d0::Date, d1::Date; holidays = nothing)
+    d1 <= d0 && return 0
+    hs = holidays === nothing ?
+         Set(Iterators.flatten(nyse_holidays(y) for y in year(d0):year(d1))) :
+         Set(holidays)
+    return count(d -> dayofweek(d) <= Friday && !(d in hs), d0 + Day(1):Day(1):d1)
+end
+
+"""
+    year_fraction(d0, d1; daycount=:calendar, holidays=nothing)
+
+Time from `d0` to `d1` in years. `:calendar` is days/365; `:business` is
+`business_days(d0, d1; holidays)/252`.
+"""
+function year_fraction(d0::Date, d1::Date; daycount::Symbol = :calendar, holidays = nothing)
+    if daycount === :calendar
+        return Dates.value(d1 - d0) / 365
+    elseif daycount === :business
+        return business_days(d0, d1; holidays = holidays) / 252
+    else
+        throw(ArgumentError("daycount must be :calendar or :business, got $(repr(daycount))"))
+    end
+end
 
 const _EXPIRY_DF = dateformat"e u dd yyyy"        # "Thu Jul 02 2026"
 const _QUOTEDATE_RE = r"Date:\s*([A-Za-z]+ \d{1,2}, \d{4})"
@@ -84,7 +170,8 @@ end
 
 """
     prepare_chain(raw; valuation_date=raw.quote_date, min_days=2, max_years=2.5,
-                  max_logm=0.40, min_quotes=5, atm_band=0.10)
+                  max_logm=0.40, min_quotes=5, atm_band=0.10,
+                  daycount=:calendar, holidays=nothing)
 
 Turn a parsed CBOE file into a calibration-ready chain. Returns
 `(quotes, expiries, rejects, spot, valuation_date)`:
@@ -98,11 +185,16 @@ Turn a parsed CBOE file into a calibration-ready chain. Returns
 `valuation_date` matters: weekend/holiday snapshots carry the last session's
 closing quotes, and for short-dated options the day count is a first-order
 effect. Pass the last trading date explicitly when the snapshot date isn't it.
+
+`daycount = :business` measures T in NYSE trading days / 252 (see
+`year_fraction`); `min_days` stays in calendar days. An expiry with zero
+trading days left is counted under `:out_of_window`.
 """
 function prepare_chain(raw; valuation_date::Date = raw.quote_date,
                        min_days::Int = 2, max_years::Real = 2.5,
                        max_logm::Real = 0.40, min_quotes::Int = 5,
-                       atm_band::Real = 0.10)
+                       atm_band::Real = 0.10, daycount::Symbol = :calendar,
+                       holidays = nothing)
     S = raw.spot
     rejects = Dict{Symbol,Int}()
     add!(k, n = 1) = rejects[k] = get(rejects, k, 0) + n
@@ -125,8 +217,8 @@ function prepare_chain(raw; valuation_date::Date = raw.quote_date,
         if days <= 0
             add!(:expired, length(idx)); continue
         end
-        T = days / 365
-        if days < min_days || T > max_years
+        T = year_fraction(valuation_date, expiry; daycount, holidays)
+        if days < min_days || T > max_years || T <= 0
             add!(:out_of_window, length(idx)); continue
         end
 

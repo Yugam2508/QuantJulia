@@ -93,6 +93,12 @@ from weekends/holidays), a skew-slope term in the loss, or joint fits across
 several snapshot dates. Listed as future work, deliberately not bolted on to
 manufacture a win.
 
+The tooling for all three now exists (`src/identification.jl`, `src/cboe.jl`):
+`prepare_chain(...; daycount = :business)` measures T in NYSE trading days,
+`calibrate_rough_heston_joint(quote_sets; skew_weight)` adds a skew-slope term
+to the loss and fits (κ, θ, ξ, ρ, H) jointly across snapshots with v0 free
+per date. The results above are unchanged — they await a rerun on data.
+
 ## Costs
 
 O(N²) per CF evaluation (N = 96 calibration / 192 evaluation), amortized per
