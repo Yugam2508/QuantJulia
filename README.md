@@ -1,6 +1,7 @@
 # QuantJulia
 
 [![CI](https://github.com/Yugam2508/QuantJulia/actions/workflows/ci.yml/badge.svg)](https://github.com/Yugam2508/QuantJulia/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://yugam2508.github.io/QuantJulia/dev/)
 
 A differentiable option-pricing and volatility-calibration framework in Julia.
 
@@ -95,6 +96,18 @@ julia --project=. scripts/04_short_end_and_powerlaw.jl # short-end duel + market
 Outputs land in `results/*.csv` (committed, so the numbers in this README are
 inspectable without rerunning). The market snapshot itself is not
 redistributed; `data/README.md` documents the exact download.
+
+## Documentation
+
+API reference (built from the docstrings), the results write-up and the
+per-stage theory notes are published at
+[yugam2508.github.io/QuantJulia](https://yugam2508.github.io/QuantJulia/dev/).
+To build locally:
+
+```
+julia --project=docs -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=docs docs/make.jl        # → docs/build/index.html
+```
 
 ## Design constraint carried from day one
 

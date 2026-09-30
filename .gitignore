@@ -19,3 +19,7 @@ Thumbs.db
 *.swp
 .vscode/
 .claude/
+
+# Documenter: generated copies of the notes and the per-machine manifest
+/docs/src/generated/
+/docs/Manifest.toml

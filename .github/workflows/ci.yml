@@ -2,15 +2,46 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['*']
   pull_request:
 jobs:
   test:
+    name: test (Julia ${{ matrix.version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # '1' = latest release, using the committed Manifest (the reproducible
+        # environment behind results/). 'lts' = the oldest version Project.toml
+        # claims (julia = "1.10"); the Manifest is written by a newer Julia, so
+        # that job resolves fresh from [compat] instead.
+        version: ['1', 'lts']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - name: Resolve from [compat] on LTS
+        if: matrix.version == 'lts'
+        run: rm Manifest.toml
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # deploydocs pushes the built site to gh-pages
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - name: Install docs environment
+        run: julia --project=docs -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+      - name: Build and deploy
+        run: julia --project=docs docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

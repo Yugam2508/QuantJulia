@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+QuantJulia = "7d9bc2cd-76b6-4109-ac5f-ec8eb777f27b"
+
+[sources]
+QuantJulia = {path = ".."}
+
+[compat]
+Documenter = "1"
