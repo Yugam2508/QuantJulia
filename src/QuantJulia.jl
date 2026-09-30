@@ -15,6 +15,7 @@ include("calibration.jl")
 include("greeks.jl")
 include("identification.jl")
 include("svi.jl")
+include("montecarlo.jl")
 
 export normal_cdf, normal_pdf, bs_price, bs_vega, bs_delta, implied_vol
 export bs_gamma, bs_theta, bs_rho
@@ -28,6 +29,7 @@ export ad_greeks, heston_greeks, rough_heston_greeks
 export SVIParams, svi_total_variance, svi_iv, svi_butterfly_g, svi_butterfly_free, fit_svi
 export SSVIParams, ssvi_total_variance, ssvi_slice, ssvi_arbitrage_free, fit_ssvi
 export atm_total_variance, calendar_violations, fit_svi_surface
+export simulate_rough_heston, rough_heston_mc_price
 export read_cboe, prepare_chain, calibrate_heston, heston_loss
 export group_quotes, rough_heston_loss, calibrate_rough_heston
 export heston_residuals, heston_batch_residuals, heston_batch_loss
