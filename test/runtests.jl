@@ -8,4 +8,5 @@ using ForwardDiff
     include("test_fourier.jl")
     include("test_calibration.jl")
     include("test_rough.jl")
+    include("test_greeks.jl")
 end
