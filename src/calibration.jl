@@ -309,3 +309,28 @@ function calibrate_rough_heston(quotes;
     x, rmse, conv, iters = _fit(rfun, _pack_rough(p0), length(quotes), method, maxiter, 1e-8)
     return (params = _unpack_rough(x), rmse = rmse, converged = conv, iterations = iters)
 end
+
+# ---------------------------------------------------------------------------
+# Generic calibration for ANY characteristic-function model
+# ---------------------------------------------------------------------------
+
+"""
+    calibrate_cf_model(make_cf, x0, quotes; method=:lm, maxiter=200, S=nothing)
+
+Fit any model given only its characteristic function. `make_cf(x, T)` must
+return `u -> ψ(u)` for the (unconstrained) parameter vector `x` at maturity
+`T`, with the package convention ψ(−i) = 1; it must accept ForwardDiff Duals
+in `x`. Put any bounds into `make_cf` as smooth transforms (exp, tanh, …).
+Quotes are batch-priced per expiry; `method` is `:lm` or `:lbfgs`; `S` is
+needed only for quotes without an `F` field.
+
+Returns `(x, rmse, converged, iterations)` with `rmse` in implied-vol units.
+"""
+function calibrate_cf_model(make_cf, x0::AbstractVector, quotes; method::Symbol = :lm,
+                            maxiter::Int = 200, S = nothing)
+    isempty(quotes) && throw(ArgumentError("calibrate_cf_model: empty quote set"))
+    groups = group_quotes(quotes; S = S)
+    rfun = x -> _batch_residuals(T -> make_cf(x, T), groups)
+    x, rmse, conv, iters = _fit(rfun, float.(collect(x0)), length(quotes), method, maxiter, 1e-9)
+    return (x = x, rmse = rmse, converged = conv, iterations = iters)
+end
