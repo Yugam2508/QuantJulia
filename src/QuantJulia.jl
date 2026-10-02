@@ -10,6 +10,7 @@ include("heston.jl")
 include("fourier.jl")
 include("fractional_riccati.jl")
 include("rough_heston.jl")
+include("lifted_heston.jl")
 include("cboe.jl")
 include("calibration.jl")
 include("greeks.jl")
@@ -25,6 +26,7 @@ export nyse_holidays, business_days, year_fraction
 export market_atm_skew, model_atm_skew, skew_powerlaw_H, prepare_identification_set
 export rough_joint_loss, calibrate_rough_heston_joint
 export RoughHestonParams, rough_heston_cf, make_rough_cf
+export lifted_kernel, make_lifted_cf
 export ad_greeks, heston_greeks, rough_heston_greeks
 export SVIParams, svi_total_variance, svi_iv, svi_butterfly_g, svi_butterfly_free, fit_svi
 export SSVIParams, ssvi_total_variance, ssvi_slice, ssvi_arbitrage_free, fit_ssvi
