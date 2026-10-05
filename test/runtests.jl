@@ -14,4 +14,5 @@ using ForwardDiff
     include("test_montecarlo.jl")
     include("test_jumps.jl")
     include("test_cos.jl")
+    include("test_variance.jl")
 end
