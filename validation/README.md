@@ -20,7 +20,27 @@ precision. Merton is not included: QuantLib's Python bindings do not expose
 its `JumpDiffusionEngine` (QuantJulia checks Merton against its closed-form
 Poisson series instead, and Bates covers the jump component here).
 
-Regenerate:
+## Market data (`quantlib_marketdata.py` → `quantlib_marketdata.csv`)
+
+Zero curves (`ZeroCurve`, zero rates linear in time), escrowed cash dividends
+and term-structure pricing, checked by `test/test_marketdata.jl`:
+
+| case | QuantLib | worst disagreement |
+|---|---|---|
+| discount factors off-pillar (rate and yield curves) | `ZeroCurve(…, Linear, Continuous)` | 0 |
+| Black-Scholes on term-structure curves | `AnalyticEuropeanEngine` | 1e-14 |
+| European with cash dividends (escrowed) | `AnalyticDividendEuropeanEngine` | 7e-15 |
+| American put with cash dividends | `FdBlackScholesVanillaEngine`, Escrowed, 1000×1000 vs our CRR (N = 2000) | 9e-4 |
+| Heston on term-structure curves | `AnalyticHestonEngine` | 4e-13 |
+
+Matching the cash-dividend engine pinned down the escrow convention: with a
+continuous yield as well, QuantLib escrows each dividend as
+D·P_r(t)/P_q(t) (the escrow grows at r − q like the stock); a plain P_r escrow
+is off by ~0.7% of the dividend PV.
+
+Regenerate with `python validation/quantlib_marketdata.py`.
+
+Regenerate the core set:
 
 ```
 python -m pip install QuantLib==1.43
