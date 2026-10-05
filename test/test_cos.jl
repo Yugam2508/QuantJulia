@@ -68,3 +68,25 @@ end
         @test g[i] ≈ (price(xp) - price(xm)) / 2h rtol = 1e-5 atol = 1e-8
     end
 end
+
+@testset "COS — rotation-recurrence payoff sum equals the direct trig formula" begin
+    # Reference: the original per-term sin/cos/exp coefficients of Fang &
+    # Oosterlee, summed against arbitrary weights.
+    function ref_sum(fac, α, β)
+        d = min(0.0, β)
+        d <= α && return 0.0
+        w = β - α
+        total = 0.0
+        for k in 0:length(fac)-1
+            uk = k * π / w
+            ψk = k == 0 ? d - α : sin(uk * (d - α)) / uk
+            χk = (cos(uk * (d - α)) * exp(d) - exp(α) + uk * sin(uk * (d - α)) * exp(d)) / (1 + uk^2)
+            total += fac[k+1] * 2 / w * (ψk - χk)
+        end
+        return total
+    end
+    fac = [cos(0.37k) * exp(-0.01k) for k in 0:511]
+    for (α, β) in ((-3.0, 2.0), (-1.2, -0.3), (-0.5, 4.5), (0.2, 3.0), (-8.0, 8.0))
+        @test QuantJulia._put_sum(fac, α, β) ≈ ref_sum(fac, α, β) atol = 1e-11
+    end
+end

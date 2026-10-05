@@ -44,21 +44,33 @@ function cf_cumulants(ψ; h = 1e-3)
     return (c1 = c1, c2 = max(c2, 0.0))
 end
 
-# Cosine coefficients of the put payoff (1 − eʸ)⁺ (per unit strike) on the
+# Σₖ' fac[k]·V_k for the put payoff (1 − eʸ)⁺ (per unit strike) on the
 # interval [α, β] for y, with the payoff support clipped to [α, min(0, β)].
-function _put_coeffs(α, β, N)
-    V = zeros(N)
+# V_k = 2/(β−α)·(ψ_k − χ_k), the cosine coefficients of the original paper.
+#
+# Performance: every angle is k·φ, φ = π(d − α)/(β − α), so cos(kφ) and
+# sin(kφ) come from one complex rotation per term (no trig in the loop), the
+# exponentials are hoisted, and nothing is allocated — the per-strike cost is
+# a handful of flops per term. The recurrence's rounding error grows like
+# k·eps, ~1e-13 at N = 512.
+function _put_sum(fac, α, β)
     d = min(0.0, β)
-    d <= α && return V                          # put is worthless on [α, β]
+    z0 = zero(eltype(fac))
+    d <= α && return z0                          # put is worthless on [α, β]
     w = β - α
-    for k in 0:N-1
+    ed, ea = exp(d), exp(α)
+    rot = cis(π * (d - α) / w)
+    z = one(rot)                                 # e^{i k φ}
+    acc = fac[1] * ((d - α) - (ed - ea))         # k = 0: ψ₀ = d − α, χ₀ = eᵈ − eᵅ
+    @inbounds for k in 1:length(fac)-1
+        z *= rot
+        c, s = real(z), imag(z)
         uk = k * π / w
-        ψk = k == 0 ? d - α : (sin(uk * (d - α)) - sin(0.0)) / uk
-        χk = (cos(uk * (d - α)) * exp(d) - exp(α) +
-              uk * sin(uk * (d - α)) * exp(d)) / (1 + uk^2)
-        V[k+1] = 2 / w * (ψk - χk)
+        ψk = s / uk
+        χk = (c * ed - ea + uk * s * ed) / (1 + uk^2)
+        acc += fac[k+1] * (ψk - χk)
     end
-    return V
+    return 2 / w * acc
 end
 
 """
@@ -84,8 +96,7 @@ function cos_call_prices(ψ, F, disc, Ks, T; N::Int = 512, L = 24, interval = no
     fac[1] /= 2
     return map(Ks) do K
         x0 = log(F / K)
-        V = _put_coeffs(x0 + a, x0 + b, N)
-        put = disc * K * sum(fac[k] * V[k] for k in 1:N)
+        put = disc * K * _put_sum(fac, x0 + a, x0 + b)
         put + disc * (F - K)
     end
 end
