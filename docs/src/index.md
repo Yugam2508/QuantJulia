@@ -31,6 +31,7 @@ batch_call_prices(make_rough_cf(T, pr), F, disc, [95.0, 100.0, 105.0], T)
 
 ## Where to go next
 
+- [User guide](guide.md) — a worked tour by task, executed at every docs build.
 - [API reference](api.md) — every exported function, with docstrings.
 - [Results: rough vs classical](generated/rough_heston.md) — the SPX
   calibration and the honest reading of what it says about H.

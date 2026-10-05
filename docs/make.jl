@@ -26,6 +26,7 @@ makedocs(
                              edit_link = "main"),
     pages = [
         "Home" => "index.md",
+        "User guide" => "guide.md",
         "API reference" => "api.md",
         "Results: rough vs classical" => "generated/rough_heston.md",
         "Theory notes" => ["generated/" * f for f in notes],
