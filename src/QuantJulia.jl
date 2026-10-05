@@ -18,6 +18,7 @@ include("identification.jl")
 include("svi.jl")
 include("montecarlo.jl")
 include("heston_mc.jl")
+include("rbergomi.jl")
 include("jumps.jl")
 include("cos.jl")
 include("variance.jl")
@@ -37,6 +38,7 @@ export SSVIParams, ssvi_total_variance, ssvi_slice, ssvi_arbitrage_free, fit_ssv
 export atm_total_variance, calendar_violations, fit_svi_surface
 export simulate_rough_heston, rough_heston_mc_price
 export simulate_heston, heston_mc_price
+export RBergomiParams, simulate_rbergomi, rbergomi_mc_prices
 export MertonParams, BatesParams, VGParams, merton_cf, bates_cf, vg_cf, merton_price
 export calibrate_cf_model
 export cf_cumulants, cos_call_prices, cos_price
