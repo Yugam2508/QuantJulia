@@ -11,7 +11,7 @@ const DOCS = @__DIR__
 const GEN = joinpath(DOCS, "src", "generated")
 rm(GEN; recursive = true, force = true)
 mkpath(GEN)
-for f in ("roadmap.md", "rough_heston.md", "rough_heston_spec.md")
+for f in ("roadmap.md", "rough_heston.md", "rough_heston_spec.md", "powerlaw_H.md")
     cp(joinpath(DOCS, f), joinpath(GEN, f))
 end
 notes = sort(filter(endswith(".md"), readdir(joinpath(DOCS, "notes"))))
@@ -30,6 +30,7 @@ makedocs(
         "API reference" => "api.md",
         "Validation against QuantLib" => "validation.md",
         "Results: rough vs classical" => "generated/rough_heston.md",
+        "Research: the skew power law does not measure H" => "generated/powerlaw_H.md",
         "Theory notes" => ["generated/" * f for f in notes],
         "Roadmap" => "generated/roadmap.md",
         "Rough Heston spec" => "generated/rough_heston_spec.md",

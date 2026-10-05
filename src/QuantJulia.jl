@@ -14,6 +14,7 @@ include("lifted_heston.jl")
 include("cboe.jl")
 include("calibration.jl")
 include("diagnostics.jl")
+include("study.jl")
 include("greeks.jl")
 include("identification.jl")
 include("svi.jl")
@@ -57,5 +58,7 @@ export group_quotes, rough_heston_loss, calibrate_rough_heston
 export heston_residuals, heston_batch_residuals, heston_batch_loss
 export rough_heston_residuals, levenberg_marquardt
 export calibration_diagnostics, heston_diagnostics, rough_heston_diagnostics
+export last_trading_day, select_calibration_set, identification_study
+export model_window_skew, powerlaw_bias_map, invert_powerlaw_H
 
 end # module

@@ -23,4 +23,5 @@ using ForwardDiff
     include("test_quantlib.jl")
     include("test_marketdata.jl")
     include("test_exotics.jl")
+    include("test_study.jl")
 end

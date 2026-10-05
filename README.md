@@ -25,6 +25,14 @@ characteristic function.
 > calendar-time distortions (non-monotone skews across daily expiries)
 > dominate the loss and leave H unidentified. Full reading in
 > [docs/rough_heston.md](docs/rough_heston.md).
+>
+> **Follow-up finding:** that 0.107 is not H. Inside rough Heston the skew
+> power-law estimator is biased at quoted maturities — on a synthetic chain
+> with true H = 0.10 it reports −0.006 while calibration recovers
+> 0.0998 ± 0.002, and through the model's H_eff(H) map the SPX slope
+> corresponds to H ≈ 0.25. At the SPX-calibrated parameters the map is flat
+> and no H reproduces the market slope: the misfit is one-factor mean
+> reversion, not roughness. See [docs/powerlaw_H.md](docs/powerlaw_H.md).
 
 | | classical | rough |
 |---|---|---|

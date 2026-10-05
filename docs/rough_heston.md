@@ -54,7 +54,10 @@ At α = 1 this is classical Heston exactly — the critical test gate.
 | belly 0.03–1.04 | 0.097 |
 | back T ≥ 0.5 | 0.022 |
 
-H ≈ 0.11 sits squarely in the literature range (~0.05–0.15). The classical
+H ≈ 0.11 sits squarely in the literature range (~0.05–0.15) — but see
+[the follow-up note](powerlaw_H.md): at quoted maturities this estimator is
+not H. Read through rough Heston's own H_eff(H) map it corresponds to a true
+H ≈ 0.25, and at the parameters calibrated here no H reproduces it. The classical
 model's calibrated skew cannot hold this power law: it is too steep at the
 front (−2.0 vs market −1.4 at one week) and too flat at the back (−0.14 vs
 −0.18 at 2.5y).
