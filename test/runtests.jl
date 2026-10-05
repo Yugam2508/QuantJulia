@@ -20,5 +20,6 @@ using ForwardDiff
     include("test_jumps.jl")
     include("test_cos.jl")
     include("test_variance.jl")
+    include("test_quantlib.jl")
     include("test_exotics.jl")
 end

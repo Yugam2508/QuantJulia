@@ -97,6 +97,13 @@ Outputs land in `results/*.csv` (committed, so the numbers in this README are
 inspectable without rerunning). The market snapshot itself is not
 redistributed; `data/README.md` documents the exact download.
 
+## Validation
+
+Every closed form, Greek and Fourier pricer is cross-checked against
+[QuantLib](https://www.quantlib.org) 1.43 on each CI run (119 reference values;
+machine-precision agreement for closed forms, ~1e-11 for Heston and Bates). See
+[validation/README.md](validation/README.md).
+
 ## Documentation
 
 API reference (built from the docstrings), the results write-up and the
