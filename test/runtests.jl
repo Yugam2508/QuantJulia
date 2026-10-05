@@ -7,6 +7,7 @@ using ForwardDiff
     include("test_heston.jl")
     include("test_fourier.jl")
     include("test_calibration.jl")
+    include("test_diagnostics.jl")
     include("test_rough.jl")
     include("test_lifted.jl")
     include("test_greeks.jl")

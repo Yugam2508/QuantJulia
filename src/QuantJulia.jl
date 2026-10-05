@@ -13,6 +13,7 @@ include("rough_heston.jl")
 include("lifted_heston.jl")
 include("cboe.jl")
 include("calibration.jl")
+include("diagnostics.jl")
 include("greeks.jl")
 include("identification.jl")
 include("svi.jl")
@@ -52,5 +53,6 @@ export read_cboe, prepare_chain, calibrate_heston, heston_loss
 export group_quotes, rough_heston_loss, calibrate_rough_heston
 export heston_residuals, heston_batch_residuals, heston_batch_loss
 export rough_heston_residuals, levenberg_marquardt
+export calibration_diagnostics, heston_diagnostics, rough_heston_diagnostics
 
 end # module
