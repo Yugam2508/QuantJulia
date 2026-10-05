@@ -17,6 +17,7 @@ include("identification.jl")
 include("svi.jl")
 include("montecarlo.jl")
 include("jumps.jl")
+include("cos.jl")
 
 export normal_cdf, normal_pdf, bs_price, bs_vega, bs_delta, implied_vol
 export bs_gamma, bs_theta, bs_rho
@@ -33,6 +34,7 @@ export atm_total_variance, calendar_violations, fit_svi_surface
 export simulate_rough_heston, rough_heston_mc_price
 export MertonParams, BatesParams, VGParams, merton_cf, bates_cf, vg_cf, merton_price
 export calibrate_cf_model
+export cf_cumulants, cos_call_prices, cos_price
 export read_cboe, prepare_chain, calibrate_heston, heston_loss
 export group_quotes, rough_heston_loss, calibrate_rough_heston
 export heston_residuals, heston_batch_residuals, heston_batch_loss

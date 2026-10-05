@@ -13,4 +13,5 @@ using ForwardDiff
     include("test_svi.jl")
     include("test_montecarlo.jl")
     include("test_jumps.jl")
+    include("test_cos.jl")
 end
