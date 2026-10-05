@@ -13,6 +13,7 @@ using ForwardDiff
     include("test_identification.jl")
     include("test_svi.jl")
     include("test_montecarlo.jl")
+    include("test_heston_mc.jl")
     include("test_jumps.jl")
     include("test_cos.jl")
     include("test_variance.jl")
