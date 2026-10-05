@@ -57,37 +57,48 @@ function simulate_heston(p::HestonParams, T, nsteps::Int, npaths::Int;
         end
         return X
     end
-    E = exp(-κ * Δ)
-    c1 = ξ^2 * E * (1 - E) / κ
-    c2 = θ * ξ^2 * (1 - E)^2 / (2κ)
-    γ1 = γ2 = 0.5
-    K0 = -ρ * κ * θ * Δ / ξ
-    K1 = γ1 * Δ * (κ * ρ / ξ - 0.5) - ρ / ξ
-    K2 = γ2 * Δ * (κ * ρ / ξ - 0.5) + ρ / ξ
-    K3 = γ1 * Δ * (1 - ρ^2)
-    K4 = γ2 * Δ * (1 - ρ^2)
+    qe = _qe_consts(p, Δ)
     for i in 1:npaths
         x = 0.0; v = v0
         for _ in 1:nsteps
-            m = θ + (v - θ) * E
-            s2 = v * c1 + c2
-            ψ = s2 / m^2
-            vn = if ψ <= 1.5
-                b2 = 2 / ψ - 1 + sqrt(2 / ψ) * sqrt(2 / ψ - 1)
-                a = m / (1 + b2)
-                a * (sqrt(b2) + _randn(rng))^2
-            else
-                pz = (ψ - 1) / (ψ + 1)
-                β = (1 - pz) / m
-                u = _rand(rng)
-                u <= pz ? 0.0 : log((1 - pz) / (1 - u)) / β
-            end
-            x += K0 + K1 * v + K2 * vn + sqrt(K3 * v + K4 * vn) * _randn(rng)
-            v = vn
+            v, dx = _qe_step(qe, v, rng)
+            x += dx
         end
         X[i] = x
     end
     return X
+end
+
+# QE step constants for one Δ (shared by terminal and full-path simulation).
+function _qe_consts(p::HestonParams, Δ)
+    κ, θ, ξ, ρ = p.κ, p.θ, p.ξ, p.ρ
+    E = exp(-κ * Δ)
+    γ1 = γ2 = 0.5
+    return (θ = θ, E = E,
+            c1 = ξ^2 * E * (1 - E) / κ, c2 = θ * ξ^2 * (1 - E)^2 / (2κ),
+            K0 = -ρ * κ * θ * Δ / ξ,
+            K1 = γ1 * Δ * (κ * ρ / ξ - 0.5) - ρ / ξ,
+            K2 = γ2 * Δ * (κ * ρ / ξ - 0.5) + ρ / ξ,
+            K3 = γ1 * Δ * (1 - ρ^2), K4 = γ2 * Δ * (1 - ρ^2))
+end
+
+# One QE step from variance v: returns (v', increment of the de-drifted log price).
+function _qe_step(c, v, rng)
+    m = c.θ + (v - c.θ) * c.E
+    s2 = v * c.c1 + c.c2
+    ψ = s2 / m^2
+    vn = if ψ <= 1.5
+        b2 = 2 / ψ - 1 + sqrt(2 / ψ) * sqrt(2 / ψ - 1)
+        a = m / (1 + b2)
+        a * (sqrt(b2) + _randn(rng))^2
+    else
+        pz = (ψ - 1) / (ψ + 1)
+        β = (1 - pz) / m
+        u = _rand(rng)
+        u <= pz ? 0.0 : log((1 - pz) / (1 - u)) / β
+    end
+    dx = c.K0 + c.K1 * v + c.K2 * vn + sqrt(c.K3 * v + c.K4 * vn) * _randn(rng)
+    return vn, dx
 end
 
 """

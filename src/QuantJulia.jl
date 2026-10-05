@@ -23,6 +23,7 @@ include("localvol.jl")
 include("jumps.jl")
 include("cos.jl")
 include("variance.jl")
+include("exotics.jl")
 
 export normal_cdf, normal_pdf, bs_price, bs_vega, bs_delta, implied_vol
 export bs_gamma, bs_theta, bs_rho
@@ -45,6 +46,8 @@ export MertonParams, BatesParams, VGParams, merton_cf, bates_cf, vg_cf, merton_p
 export calibrate_cf_model
 export cf_cumulants, cos_call_prices, cos_price
 export variance_swap_strike, replicate_variance, market_variance_term_structure, model_vix
+export simulate_gbm_paths, simulate_heston_paths, crr_price, lsm_american_price
+export barrier_price, bgk_barrier, barrier_mc_price, geometric_asian_price, asian_mc_price
 export read_cboe, prepare_chain, calibrate_heston, heston_loss
 export group_quotes, rough_heston_loss, calibrate_rough_heston
 export heston_residuals, heston_batch_residuals, heston_batch_loss
