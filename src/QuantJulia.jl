@@ -19,6 +19,7 @@ include("svi.jl")
 include("montecarlo.jl")
 include("heston_mc.jl")
 include("rbergomi.jl")
+include("localvol.jl")
 include("jumps.jl")
 include("cos.jl")
 include("variance.jl")
@@ -36,6 +37,7 @@ export ad_greeks, heston_greeks, rough_heston_greeks
 export SVIParams, svi_total_variance, svi_iv, svi_butterfly_g, svi_butterfly_free, fit_svi
 export SSVIParams, ssvi_total_variance, ssvi_slice, ssvi_arbitrage_free, fit_ssvi
 export atm_total_variance, calendar_violations, fit_svi_surface
+export dupire_local_variance, ssvi_surface, local_vol_mc_prices
 export simulate_rough_heston, rough_heston_mc_price
 export simulate_heston, heston_mc_price
 export RBergomiParams, simulate_rbergomi, rbergomi_mc_prices

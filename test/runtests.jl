@@ -12,6 +12,7 @@ using ForwardDiff
     include("test_greeks.jl")
     include("test_identification.jl")
     include("test_svi.jl")
+    include("test_localvol.jl")
     include("test_montecarlo.jl")
     include("test_heston_mc.jl")
     include("test_rbergomi.jl")
