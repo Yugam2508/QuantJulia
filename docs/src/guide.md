@@ -136,10 +136,21 @@ Heston with Andersen's QE scheme (accurate with few steps even when the
 Feller condition fails) and rough Bergomi by the hybrid scheme:
 
 ```@example guide
-qe = heston_mc_price(S, K, r, q, truth, 0.5; nsteps = 16, npaths = 20_000, rng = MersenneTwister(1))
+qe = heston_mc_price(S, K, r, q, truth, 0.5; nsteps = 16, npaths = 20_000, seed = 1)
 rb = rbergomi_mc_prices(S, Ks, r, q, RBergomiParams(0.04, 1.9, -0.9, 0.1), 0.5;
-                        nsteps = 50, npaths = 20_000, rng = MersenneTwister(2))
+                        nsteps = 50, npaths = 20_000, seed = 2)
 (heston_qe = qe, heston_fourier = heston_price(S, K, r, q, truth, 0.5), rbergomi_calls = rb.prices)
+```
+
+Every simulator runs its paths on all threads (start Julia with `-t auto`).
+Paths come in blocks of `MC_BLOCK` = 1024, each with its own random stream
+derived from the seed. So `seed = 1` returns the same numbers on a laptop
+with 1 thread and a server with 64, and a 10,000-path run is a prefix of a
+100,000-path one. Without `seed`, the master seed is drawn from `rng` (by
+default the global RNG, so `Random.seed!` works as usual):
+
+```@example guide
+qe == heston_mc_price(S, K, r, q, truth, 0.5; nsteps = 16, npaths = 20_000, seed = 1)
 ```
 
 ## Market data

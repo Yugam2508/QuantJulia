@@ -39,7 +39,10 @@ end
         for (K, c, se) in zip(Ks, pr.prices, pr.stderrs)
             iv_in = sqrt(w(log(K / S), T) / T)
             @test abs(c - bs_price(S, K, r, q, iv_in, T)) < 4se
-            @test abs(implied_vol(c, S, K, r, q, T) - iv_in) < 1.5e-3   # < 15 bps
+            # In vol units: the MC error is se/vega (4–8 bps here, largest in
+            # the wings) plus Euler's O(Δ) bias, under 2 bps at 400 steps.
+            se_iv = se / bs_vega(S, K, r, q, iv_in, T)
+            @test abs(implied_vol(c, S, K, r, q, T) - iv_in) < 4se_iv + 2e-4
         end
     end
 end

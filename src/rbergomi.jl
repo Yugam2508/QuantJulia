@@ -39,13 +39,14 @@ end
 RBergomiParams(ξ0, η, ρ, H) = RBergomiParams(promote(ξ0, η, ρ, H)...)
 
 """
-    simulate_rbergomi(p::RBergomiParams, T, nsteps, npaths; rng=nothing)
+    simulate_rbergomi(p::RBergomiParams, T, nsteps, npaths; rng=nothing, seed=nothing)
 
 Simulate rough Bergomi with the hybrid scheme. Returns `(X, V)`: the
 de-drifted log returns X_T = log(S_T/F) and the terminal variances V_T, one
-per path.
+per path. Parallel and reproducible as described for `simulate_heston`.
 """
-function simulate_rbergomi(p::RBergomiParams, T, nsteps::Int, npaths::Int; rng = nothing)
+function simulate_rbergomi(p::RBergomiParams, T, nsteps::Int, npaths::Int;
+                           rng = nothing, seed = nothing)
     0 < p.H <= 0.5 || throw(DomainError(p.H, "rough Bergomi needs H ∈ (0, 1/2]"))
     nsteps >= 1 && npaths >= 1 || throw(ArgumentError("need nsteps, npaths ≥ 1"))
     α = p.H - 0.5
@@ -65,42 +66,44 @@ function simulate_rbergomi(p::RBergomiParams, T, nsteps::Int, npaths::Int; rng =
     sρ = sqrt(1 - p.ρ^2)
     X = zeros(npaths)
     VT = zeros(npaths)
-    dW = zeros(nsteps)
-    for path in 1:npaths
-        x = 0.0
-        v = p.ξ0                                     # V at t = 0
-        for i in 1:nsteps
-            z1 = _randn(rng); z2 = _randn(rng); z3 = _randn(rng)
-            dW[i] = sqΔ * z1
-            # price step on [t_{i−1}, t_i] with the left-point variance
-            x += -v * Δ / 2 + sqrt(v) * (p.ρ * dW[i] + sρ * sqΔ * z3)
-            # Volterra process at t_i: exact nearest cell + hybrid lags
-            y = c1 * z1 + c2 * z2
-            @inbounds for j in 1:i-1
-                y += g[i-j+1] * dW[j]
+    _foreach_block(npaths, rng, seed) do paths, brng
+        dW = zeros(nsteps)
+        for path in paths
+            x = 0.0
+            v = p.ξ0                                     # V at t = 0
+            for i in 1:nsteps
+                z1 = randn(brng); z2 = randn(brng); z3 = randn(brng)
+                dW[i] = sqΔ * z1
+                # price step on [t_{i−1}, t_i] with the left-point variance
+                x += -v * Δ / 2 + sqrt(v) * (p.ρ * dW[i] + sρ * sqΔ * z3)
+                # Volterra process at t_i: exact nearest cell + hybrid lags
+                y = c1 * z1 + c2 * z2
+                @inbounds for j in 1:i-1
+                    y += g[i-j+1] * dW[j]
+                end
+                t = i * Δ
+                v = p.ξ0 * exp(p.η * s2H * y - p.η^2 * t^(2 * p.H) / 2)
             end
-            t = i * Δ
-            v = p.ξ0 * exp(p.η * s2H * y - p.η^2 * t^(2 * p.H) / 2)
+            X[path] = x
+            VT[path] = v
         end
-        X[path] = x
-        VT[path] = v
     end
     return (X = X, V = VT)
 end
 
 """
     rbergomi_mc_prices(S, Ks, r, q, p::RBergomiParams, T; nsteps=200,
-                       npaths=50_000, rng=nothing)
+                       npaths=50_000, rng=nothing, seed=nothing)
 
 Call prices for all strikes `Ks` from one set of rough Bergomi paths, with
 the forward as control variate. Returns `(prices, stderrs)`; puts follow by
-parity, `P = C − e^{−rT}(F − K)`.
+parity, `P = C − e^{−rT}(F − K)`. `rng`/`seed` as in `simulate_rbergomi`.
 """
 function rbergomi_mc_prices(S, Ks, r, q, p::RBergomiParams, T; nsteps::Int = 200,
-                            npaths::Int = 50_000, rng = nothing)
+                            npaths::Int = 50_000, rng = nothing, seed = nothing)
     F = S * exp((r - q) * T)
     disc = exp(-r * T)
-    ST = F .* exp.(simulate_rbergomi(p, T, nsteps, npaths; rng).X)
+    ST = F .* exp.(simulate_rbergomi(p, T, nsteps, npaths; rng, seed).X)
     cv = ST .- F
     vv = max(sum(abs2, cv), eps())
     prices = Float64[]; ses = Float64[]

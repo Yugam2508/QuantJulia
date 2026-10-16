@@ -30,45 +30,53 @@ using LinearAlgebra: qr
 # -----------------------------------------------------------------------------
 
 """
-    simulate_gbm_paths(S, r, q, σ, T, nsteps, npaths; rng=nothing)
+    simulate_gbm_paths(S, r, q, σ, T, nsteps, npaths; rng=nothing, seed=nothing)
 
 Exact geometric Brownian motion paths: an `npaths × (nsteps+1)` matrix of
-spot prices on t_k = kT/nsteps, column 1 = `S`.
+spot prices on t_k = kT/nsteps, column 1 = `S`. Rows are simulated in
+parallel blocks; `seed` (or one draw from `rng`) fixes the matrix
+independently of the thread count (see `MC_BLOCK`).
 """
-function simulate_gbm_paths(S, r, q, σ, T, nsteps::Int, npaths::Int; rng = nothing)
+function simulate_gbm_paths(S, r, q, σ, T, nsteps::Int, npaths::Int;
+                            rng = nothing, seed = nothing)
     Δ = T / nsteps
     drift = (r - q - σ^2 / 2) * Δ
     vol = σ * sqrt(Δ)
     P = Matrix{Float64}(undef, npaths, nsteps + 1)
-    for i in 1:npaths
-        x = log(S)
-        P[i, 1] = S
-        for k in 1:nsteps
-            x += drift + vol * _randn(rng)
-            P[i, k+1] = exp(x)
+    _foreach_block(npaths, rng, seed) do paths, brng
+        for i in paths
+            x = log(S)
+            P[i, 1] = S
+            for k in 1:nsteps
+                x += drift + vol * randn(brng)
+                P[i, k+1] = exp(x)
+            end
         end
     end
     return P
 end
 
 """
-    simulate_heston_paths(S, r, q, p::HestonParams, T, nsteps, npaths; rng=nothing)
+    simulate_heston_paths(S, r, q, p::HestonParams, T, nsteps, npaths; rng=nothing, seed=nothing)
 
 Heston spot paths by Andersen's QE scheme (see `simulate_heston`): an
-`npaths × (nsteps+1)` matrix of spot prices, column 1 = `S`.
+`npaths × (nsteps+1)` matrix of spot prices, column 1 = `S`. Parallel and
+reproducible as `simulate_gbm_paths`.
 """
 function simulate_heston_paths(S, r, q, p::HestonParams, T, nsteps::Int, npaths::Int;
-                               rng = nothing)
+                               rng = nothing, seed = nothing)
     Δ = T / nsteps
     qe = _qe_consts(p, Δ)
     P = Matrix{Float64}(undef, npaths, nsteps + 1)
-    for i in 1:npaths
-        x = 0.0; v = p.v0
-        P[i, 1] = S
-        for k in 1:nsteps
-            v, dx = _qe_step(qe, v, rng)
-            x += dx
-            P[i, k+1] = S * exp((r - q) * k * Δ + x)
+    _foreach_block(npaths, rng, seed) do paths, brng
+        for i in paths
+            x = 0.0; v = p.v0
+            P[i, 1] = S
+            for k in 1:nsteps
+                v, dx = _qe_step(qe, v, brng)
+                x += dx
+                P[i, k+1] = S * exp((r - q) * k * Δ + x)
+            end
         end
     end
     return P

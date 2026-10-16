@@ -4,6 +4,8 @@ module QuantJulia
 # carry ForwardDiff rules, which matters because Duals flow through prices —
 # and through the fractional solver, where even α = H + 1/2 can be a Dual.
 using SpecialFunctions: erf, gamma
+# Monte Carlo blocks draw from their own Xoshiro streams (src/parallel.jl).
+using Random: Random, Xoshiro
 
 include("blackscholes.jl")
 include("heston.jl")
@@ -18,6 +20,7 @@ include("study.jl")
 include("greeks.jl")
 include("identification.jl")
 include("svi.jl")
+include("parallel.jl")
 include("montecarlo.jl")
 include("heston_mc.jl")
 include("rbergomi.jl")
@@ -42,7 +45,7 @@ export SVIParams, svi_total_variance, svi_iv, svi_butterfly_g, svi_butterfly_fre
 export SSVIParams, ssvi_total_variance, ssvi_slice, ssvi_arbitrage_free, fit_ssvi
 export atm_total_variance, calendar_violations, fit_svi_surface
 export dupire_local_variance, ssvi_surface, local_vol_mc_prices
-export simulate_rough_heston, rough_heston_mc_price
+export MC_BLOCK, simulate_rough_heston, rough_heston_mc_price
 export simulate_heston, heston_mc_price
 export RBergomiParams, simulate_rbergomi, rbergomi_mc_prices
 export MertonParams, BatesParams, VGParams, merton_cf, bates_cf, vg_cf, merton_price

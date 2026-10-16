@@ -11,7 +11,7 @@ same Fourier pricing / implied-vol / calibration machinery is written once and
 reused across models — the only thing that changes between models is the
 characteristic function.
 
-> **Status: complete** (229 tests green). Classical and rough Heston are both
+> **Status: complete** (1,003 tests green on Julia 1.10 and current). Classical and rough Heston are both
 > calibrated to a real SPX chain (11,858 OTM quotes, 50 expiries, 2026-07-02
 > close), with a hand-rolled implicit fractional Riccati solver, AD gradients
 > through everything including the Hurst exponent, and a five-gate validation
@@ -42,31 +42,61 @@ characteristic function.
 | market skew power law | — | **H ≈ 0.107** (model-free) |
 | calibration wall time (192 quotes) | 9 s | 68 s |
 
+## Install
+
+```julia
+import Pkg
+Pkg.add(url = "https://github.com/Yugam2508/QuantJulia")
+```
+
+Julia ≥ 1.10. See [CHANGELOG.md](CHANGELOG.md) for what changed between versions.
+
 ## Layout
 
 ```
 src/
-  QuantJulia.jl      # module
-  blackscholes.jl    # Stage 1 — BSM price, Greeks, implied vol        ✅
-  heston.jl          # Stage 2 — Heston CF, little-trap form           ✅
-  fourier.jl         # Stage 3 — model-agnostic Gil-Pelaez pricer      ✅
-  cboe.jl            # Stage 4 — CBOE parser, filters, parity forwards ✅
-  calibration.jl     # Stage 4/8 — vega-weighted loss + LBFGS/AD       ✅
-  fractional_riccati.jl # Stage 6 — implicit fractional solver         ✅
-  rough_heston.jl    # Stage 7 — El Euch–Rosenbaum rough CF            ✅
-scripts/
-  01_prepare_data.jl # raw CBOE csv → filtered chain with implied vols
-  02_calibrate.jl    # fit classical Heston, report per-expiry RMSE
-  03_calibrate_rough.jl        # rough vs classical head-to-head
-  04_short_end_and_powerlaw.jl # short-end duel + market skew power law
-test/
-  runtests.jl        # + per-stage test files (229 tests)
-data/                # market data (not committed — see data/README.md)
-results/             # committed fit results
-docs/
-  roadmap.md         # the full plan, grounded to where the code actually is
-  rough_heston_spec.md   # committed destination spec (Stages 6–8)
-  notes/             # per-stage theory notes: derivations + the "why"
+  QuantJulia.jl         # module and exports
+  blackscholes.jl       # BSM price, Greeks, safeguarded-Newton implied vol
+  heston.jl             # Heston CF, little-trap form
+  fourier.jl            # model-agnostic Gil-Pelaez pricer (adaptive + batch)
+  cos.jl                # COS pricer (Fang–Oosterlee) with a rotation recurrence
+  fractional_riccati.jl # implicit fractional Adams solver
+  rough_heston.jl       # El Euch–Rosenbaum rough Heston CF
+  lifted_heston.jl      # Markovian multi-factor approximation of rough Heston
+  jumps.jl              # Merton, Bates, Variance Gamma + generic CF calibration
+  cboe.jl               # CBOE parser, filters, parity forwards, business time
+  calibration.jl        # vega-weighted losses, LBFGS / Levenberg–Marquardt
+  diagnostics.jl        # standard errors, correlations, condition numbers
+  identification.jl     # skew-slope loss, joint multi-date rough fits
+  study.jl              # H-identifiability study and power-law bias map
+  greeks.jl             # model Greeks by automatic differentiation
+  svi.jl                # SVI / SSVI surfaces and arbitrage checks
+  localvol.jl           # Dupire local vol + local-vol Monte Carlo
+  variance.jl           # variance swaps, replication, model VIX
+  parallel.jl           # reproducible multithreaded Monte Carlo blocks
+  montecarlo.jl         # rough Heston Monte Carlo (hybrid Volterra Euler)
+  heston_mc.jl          # Heston Monte Carlo, Andersen QE
+  rbergomi.jl           # rough Bergomi, hybrid scheme
+  exotics.jl            # American (CRR, LSM), barriers, Asians
+  marketdata.jl         # discount curves, cash dividends, forwards
+scripts/                # 01–05: data prep, calibrations, the H study
+test/                   # one file per source file + QuantLib cross-checks
+validation/             # QuantLib 1.43 reference generators and CSVs
+data/                   # market data (not committed — see data/README.md)
+results/                # committed fit results
+docs/                   # Documenter site, research notes, theory notes
+```
+
+## Monte Carlo is threaded and reproducible
+
+Start Julia with `-t auto` and every simulator uses all cores (about 3.5× on
+4 cores). Paths are generated in fixed blocks, each with its own random
+stream derived from one seed, so `seed = 42` gives bit-identical results on 1
+thread or 64:
+
+```julia
+heston_mc_price(100.0, 100.0, 0.03, 0.0, HestonParams(1.5, 0.04, 0.5, -0.7, 0.04), 1.0;
+                npaths = 400_000, seed = 42)
 ```
 
 ## Running the tests
@@ -83,7 +113,8 @@ or in one shot:
 julia --project=. -e 'import Pkg; Pkg.test()'
 ```
 
-The tests are written first; you implement `src/blackscholes.jl` until they pass.
+Multithreaded: `JULIA_NUM_THREADS=4 julia --project=. -e 'import Pkg; Pkg.test()'`.
+The suite checks that Monte Carlo results do not depend on the thread count.
 
 ## Reproducing everything
 
@@ -91,7 +122,7 @@ The tests are written first; you implement `src/blackscholes.jl` until they pass
 # 0. environment (Julia ≥ 1.10)
 julia --project=. -e 'import Pkg; Pkg.instantiate()'
 
-# 1. tests — 229 gates, ~6 min (includes a Monte Carlo cross-check)
+# 1. tests — 1,003 checks, ~5 min (add -t auto to use all cores)
 julia --project=. -e 'import Pkg; Pkg.test()'
 
 # 2. data — download the CBOE SPX chain per data/README.md, then:
@@ -99,6 +130,7 @@ julia --project=. scripts/01_prepare_data.jl          # parse, filter, implied v
 julia --project=. scripts/02_calibrate.jl             # classical Heston fit (~1 min)
 julia --project=. scripts/03_calibrate_rough.jl       # rough vs classical duel (~2 min)
 julia --project=. scripts/04_short_end_and_powerlaw.jl # short-end duel + market H (~6 min)
+julia --project=. scripts/05_identify_H.jl            # power-law bias map (~30 s)
 ```
 
 Outputs land in `results/*.csv` (committed, so the numbers in this README are
@@ -108,7 +140,7 @@ redistributed; `data/README.md` documents the exact download.
 ## Validation
 
 Every closed form, Greek and Fourier pricer is cross-checked against
-[QuantLib](https://www.quantlib.org) 1.43 on each CI run (119 reference values;
+[QuantLib](https://www.quantlib.org) 1.43 on each CI run (152 reference values;
 machine-precision agreement for closed forms, ~1e-11 for Heston and Bates). See
 [validation/README.md](validation/README.md).
 
@@ -128,8 +160,8 @@ julia --project=docs docs/make.jl        # → docs/build/index.html
 
 Everything is written to stay **automatic-differentiation friendly** — functions
 are generic in their numeric type so `ForwardDiff.Dual` can flow through prices
-to yield Greeks and calibration gradients. This is why the eventual rough-Heston
-fractional ODE solver will be hand-rolled rather than pulled from a package.
+to yield Greeks and calibration gradients. This is why the rough-Heston
+fractional Riccati solver is hand-rolled rather than pulled from a package.
 
 ## Roadmap
 

@@ -3,5 +3,5 @@
 ```@autodocs
 Modules = [QuantJulia]
 Private = false
-Order = [:type, :function]
+Order = [:constant, :type, :function]
 ```
