@@ -34,17 +34,19 @@
 # cross-check in that regime; treat MC prices outside it as biased high.
 # =============================================================================
 
-_randn(rng) = rng === nothing ? randn() : randn(rng)
-
 """
-    simulate_rough_heston(p::RoughHestonParams, T, nsteps, npaths; rng=nothing)
+    simulate_rough_heston(p::RoughHestonParams, T, nsteps, npaths; rng=nothing, seed=nothing)
 
 Simulate `npaths` paths of the de-drifted log return X_T = log(S_T/F) under
 rough Heston with the hybrid Volterra-Euler scheme (see the file header).
-Returns the vector of X_T. `rng` is any RNG accepted by `randn(rng)`
-(`nothing` uses the global RNG). Requires H ∈ (0, 1/2].
+Returns the vector of X_T. Requires H ∈ (0, 1/2].
+
+Paths are simulated in parallel blocks (see `MC_BLOCK`). The run is fixed by
+`seed` (any integer) when given, otherwise by one draw from `rng` (default:
+the global RNG), and does not depend on the number of threads.
 """
-function simulate_rough_heston(p::RoughHestonParams, T, nsteps::Int, npaths::Int; rng = nothing)
+function simulate_rough_heston(p::RoughHestonParams, T, nsteps::Int, npaths::Int;
+                               rng = nothing, seed = nothing)
     0 < p.H <= 0.5 || throw(DomainError(p.H, "simulate_rough_heston needs H ∈ (0, 1/2]"))
     nsteps >= 1 && npaths >= 1 || throw(ArgumentError("need nsteps, npaths ≥ 1"))
     α = p.H + 0.5
@@ -59,43 +61,47 @@ function simulate_rough_heston(p::RoughHestonParams, T, nsteps::Int, npaths::Int
     sqΔ = sqrt(Δ)
 
     X = zeros(npaths)
-    Vp = zeros(nsteps)          # V⁺_j, the floored variance per cell
-    dW = zeros(nsteps)
-    for path in 1:npaths
-        x = 0.0
-        v = p.v0
-        for i in 1:nsteps
-            vp = max(v, 0.0)
-            z1 = _randn(rng); z2 = _randn(rng); z3 = _randn(rng)
-            Vp[i] = vp
-            dW[i] = sqΔ * z1
-            I = c1 * z1 + c2 * z2
-            x += -vp * Δ / 2 + sqrt(vp) * (p.ρ * dW[i] + sρ * sqΔ * z3)
-            # V at t_i from the whole history (cells 1..i), lag-1 cell exact.
-            acc = p.κ * (p.θ - vp) * D[1] + p.ξ * sqrt(vp) * I
-            @inbounds for j in 1:i-1
-                k = i - j + 1
-                acc += p.κ * (p.θ - Vp[j]) * D[k] + p.ξ * sqrt(Vp[j]) * (D[k] / Δ) * dW[j]
+    _foreach_block(npaths, rng, seed) do paths, brng
+        Vp = zeros(nsteps)          # V⁺_j, the floored variance per cell
+        dW = zeros(nsteps)
+        for path in paths
+            x = 0.0
+            v = p.v0
+            for i in 1:nsteps
+                vp = max(v, 0.0)
+                z1 = randn(brng); z2 = randn(brng); z3 = randn(brng)
+                Vp[i] = vp
+                dW[i] = sqΔ * z1
+                I = c1 * z1 + c2 * z2
+                x += -vp * Δ / 2 + sqrt(vp) * (p.ρ * dW[i] + sρ * sqΔ * z3)
+                # V at t_i from the whole history (cells 1..i), lag-1 cell exact.
+                acc = p.κ * (p.θ - vp) * D[1] + p.ξ * sqrt(vp) * I
+                @inbounds for j in 1:i-1
+                    k = i - j + 1
+                    acc += p.κ * (p.θ - Vp[j]) * D[k] + p.ξ * sqrt(Vp[j]) * (D[k] / Δ) * dW[j]
+                end
+                v = p.v0 + acc / G
             end
-            v = p.v0 + acc / G
+            X[path] = x
         end
-        X[path] = x
     end
     return X
 end
 
 """
     rough_heston_mc_price(S, K, r, q, p::RoughHestonParams, T; call=true,
-                          nsteps=200, npaths=50_000, rng=nothing)
+                          nsteps=200, npaths=50_000, rng=nothing, seed=nothing)
 
 Monte Carlo price of a European option under rough Heston, with the forward
-as control variate. Returns `(price, stderr)`.
+as control variate. Returns `(price, stderr)`. `rng`/`seed` as in
+`simulate_rough_heston`.
 """
 function rough_heston_mc_price(S, K, r, q, p::RoughHestonParams, T; call::Bool = true,
-                               nsteps::Int = 200, npaths::Int = 50_000, rng = nothing)
+                               nsteps::Int = 200, npaths::Int = 50_000, rng = nothing,
+                               seed = nothing)
     F = S * exp((r - q) * T)
     disc = exp(-r * T)
-    X = simulate_rough_heston(p, T, nsteps, npaths; rng = rng)
+    X = simulate_rough_heston(p, T, nsteps, npaths; rng, seed)
     ST = F .* exp.(X)
     pay = call ? max.(ST .- K, 0.0) : max.(K .- ST, 0.0)
     # Control variate S_T with known mean F.

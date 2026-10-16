@@ -25,19 +25,20 @@
 # X is the de-drifted log return, as in every other module here.
 # =============================================================================
 
-_rand(rng) = rng === nothing ? rand() : rand(rng)
-
 """
-    simulate_heston(p::HestonParams, T, nsteps, npaths; scheme=:qe, rng=nothing)
+    simulate_heston(p::HestonParams, T, nsteps, npaths; scheme=:qe, rng=nothing, seed=nothing)
 
 Simulate `npaths` de-drifted log returns X_T = log(S_T/F) under Heston.
 `scheme = :qe` is Andersen's Quadratic-Exponential scheme (accurate with few
 steps, no positivity floor); `scheme = :euler` is full-truncation Euler, kept
-as the baseline QE is measured against. `rng` is any RNG accepted by
-`randn(rng)`/`rand(rng)` (`nothing` uses the global RNG).
+as the baseline QE is measured against.
+
+Paths are simulated in parallel blocks (see `MC_BLOCK`). The run is fixed by
+`seed` (any integer) when given, otherwise by one draw from `rng` (default:
+the global RNG), and does not depend on the number of threads.
 """
 function simulate_heston(p::HestonParams, T, nsteps::Int, npaths::Int;
-                         scheme::Symbol = :qe, rng = nothing)
+                         scheme::Symbol = :qe, rng = nothing, seed = nothing)
     nsteps >= 1 && npaths >= 1 || throw(ArgumentError("need nsteps, npaths ≥ 1"))
     scheme in (:qe, :euler) || throw(ArgumentError("scheme must be :qe or :euler"))
     κ, θ, ξ, ρ, v0 = p.κ, p.θ, p.ξ, p.ρ, p.v0
@@ -45,26 +46,30 @@ function simulate_heston(p::HestonParams, T, nsteps::Int, npaths::Int;
     X = zeros(npaths)
     if scheme === :euler
         sρ = sqrt(1 - ρ^2)
-        for i in 1:npaths
-            x = 0.0; v = v0
-            for _ in 1:nsteps
-                vp = max(v, 0.0)
-                z1 = _randn(rng); z2 = _randn(rng)
-                x += -vp * Δ / 2 + sqrt(vp * Δ) * z1
-                v += κ * (θ - vp) * Δ + ξ * sqrt(vp * Δ) * (ρ * z1 + sρ * z2)
+        _foreach_block(npaths, rng, seed) do paths, brng
+            for i in paths
+                x = 0.0; v = v0
+                for _ in 1:nsteps
+                    vp = max(v, 0.0)
+                    z1 = randn(brng); z2 = randn(brng)
+                    x += -vp * Δ / 2 + sqrt(vp * Δ) * z1
+                    v += κ * (θ - vp) * Δ + ξ * sqrt(vp * Δ) * (ρ * z1 + sρ * z2)
+                end
+                X[i] = x
             end
-            X[i] = x
         end
         return X
     end
     qe = _qe_consts(p, Δ)
-    for i in 1:npaths
-        x = 0.0; v = v0
-        for _ in 1:nsteps
-            v, dx = _qe_step(qe, v, rng)
-            x += dx
+    _foreach_block(npaths, rng, seed) do paths, brng
+        for i in paths
+            x = 0.0; v = v0
+            for _ in 1:nsteps
+                v, dx = _qe_step(qe, v, brng)
+                x += dx
+            end
+            X[i] = x
         end
-        X[i] = x
     end
     return X
 end
@@ -90,30 +95,31 @@ function _qe_step(c, v, rng)
     vn = if ψ <= 1.5
         b2 = 2 / ψ - 1 + sqrt(2 / ψ) * sqrt(2 / ψ - 1)
         a = m / (1 + b2)
-        a * (sqrt(b2) + _randn(rng))^2
+        a * (sqrt(b2) + randn(rng))^2
     else
         pz = (ψ - 1) / (ψ + 1)
         β = (1 - pz) / m
-        u = _rand(rng)
+        u = rand(rng)
         u <= pz ? 0.0 : log((1 - pz) / (1 - u)) / β
     end
-    dx = c.K0 + c.K1 * v + c.K2 * vn + sqrt(c.K3 * v + c.K4 * vn) * _randn(rng)
+    dx = c.K0 + c.K1 * v + c.K2 * vn + sqrt(c.K3 * v + c.K4 * vn) * randn(rng)
     return vn, dx
 end
 
 """
     heston_mc_price(S, K, r, q, p::HestonParams, T; call=true, nsteps=32,
-                    npaths=100_000, scheme=:qe, rng=nothing)
+                    npaths=100_000, scheme=:qe, rng=nothing, seed=nothing)
 
 Monte Carlo price of a European option under Heston, with the forward as a
-control variate (E[S_T] = F). Returns `(price, stderr)`.
+control variate (E[S_T] = F). Returns `(price, stderr)`. `rng`/`seed` as in
+`simulate_heston`.
 """
 function heston_mc_price(S, K, r, q, p::HestonParams, T; call::Bool = true,
                          nsteps::Int = 32, npaths::Int = 100_000,
-                         scheme::Symbol = :qe, rng = nothing)
+                         scheme::Symbol = :qe, rng = nothing, seed = nothing)
     F = S * exp((r - q) * T)
     disc = exp(-r * T)
-    ST = F .* exp.(simulate_heston(p, T, nsteps, npaths; scheme, rng))
+    ST = F .* exp.(simulate_heston(p, T, nsteps, npaths; scheme, rng, seed))
     pay = call ? max.(ST .- K, 0.0) : max.(K .- ST, 0.0)
     cv = ST .- F
     β = sum((pay .- sum(pay) / npaths) .* cv) / max(sum(abs2, cv), eps())

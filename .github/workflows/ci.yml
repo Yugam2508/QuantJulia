@@ -8,6 +8,10 @@ jobs:
   test:
     name: test (Julia ${{ matrix.version }})
     runs-on: ubuntu-latest
+    env:
+      # Run the suite multithreaded so the parallel Monte Carlo paths (and the
+      # thread-count independence check in test/test_parallel.jl) are exercised.
+      JULIA_NUM_THREADS: 2
     strategy:
       fail-fast: false
       matrix:

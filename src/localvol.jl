@@ -60,21 +60,22 @@ end
 
 """
     local_vol_mc_prices(S, Ks, r, q, w, T; nsteps=400, npaths=100_000,
-                        kmax=1.5, nk=301, rng=nothing)
+                        kmax=1.5, nk=301, rng=nothing, seed=nothing)
 
 Call prices for strikes `Ks` at maturity `T` under the Dupire local-volatility
 diffusion of the total-variance surface `w(k, T)`, by Euler Monte Carlo on the
 de-drifted log return X_t = log(S_t/F_t) (dX = −σ²/2 dt + σ dW). The local
 variance is tabulated once on a `nk`-point grid in k ∈ [−kmax, kmax] at each
 step midpoint and interpolated linearly. Forward as control variate. Returns
-`(prices, stderrs)`.
+`(prices, stderrs)`. Paths run in parallel blocks; `seed` (or one draw from
+`rng`) fixes the result independently of the thread count (see `MC_BLOCK`).
 
 Euler's time-discretization bias is O(Δ): on the SSVI test surface it tilts
 the smile by about ±6 bps of implied vol at 100 steps and is below 2 bps at
 the default 400.
 """
 function local_vol_mc_prices(S, Ks, r, q, w, T; nsteps::Int = 400, npaths::Int = 100_000,
-                             kmax = 1.5, nk::Int = 301, rng = nothing)
+                             kmax = 1.5, nk::Int = 301, rng = nothing, seed = nothing)
     Δ = T / nsteps
     kg = range(-kmax, kmax, length = nk)
     dk = step(kg)
@@ -90,13 +91,15 @@ function local_vol_mc_prices(S, Ks, r, q, w, T; nsteps::Int = 400, npaths::Int =
     F = S * exp((r - q) * T)
     disc = exp(-r * T)
     ST = zeros(npaths)
-    for p in 1:npaths
-        x = 0.0
-        for i in 1:nsteps
-            v = lv(x, i)
-            x += -v * Δ / 2 + sqrt(v) * sqΔ * _randn(rng)
+    _foreach_block(npaths, rng, seed) do paths, brng
+        for p in paths
+            x = 0.0
+            for i in 1:nsteps
+                v = lv(x, i)
+                x += -v * Δ / 2 + sqrt(v) * sqΔ * randn(brng)
+            end
+            ST[p] = F * exp(x)
         end
-        ST[p] = F * exp(x)
     end
     cv = ST .- F
     vv = max(sum(abs2, cv), eps())

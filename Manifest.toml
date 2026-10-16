@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "6902d4001625d3b6229f5d7313f8d71c0b11504e"
+project_hash = "bf30d5b62f34312f1526b83c5e11196df979b0c2"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "d9aaef7c63466eee4de23b4d9dad03629df54bea"
@@ -399,10 +399,10 @@ version = "2.11.3"
     Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 
 [[deps.QuantJulia]]
-deps = ["Dates", "ForwardDiff", "LinearAlgebra", "Optim", "Printf", "QuadGK", "SpecialFunctions"]
+deps = ["Dates", "ForwardDiff", "LinearAlgebra", "Optim", "Printf", "QuadGK", "Random", "SpecialFunctions"]
 path = "."
 uuid = "7d9bc2cd-76b6-4109-ac5f-ec8eb777f27b"
-version = "0.1.0"
+version = "0.2.0"
 
 [[deps.Random]]
 deps = ["SHA"]

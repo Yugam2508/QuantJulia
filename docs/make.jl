@@ -14,6 +14,7 @@ mkpath(GEN)
 for f in ("roadmap.md", "rough_heston.md", "rough_heston_spec.md", "powerlaw_H.md")
     cp(joinpath(DOCS, f), joinpath(GEN, f))
 end
+cp(joinpath(DOCS, "..", "CHANGELOG.md"), joinpath(GEN, "CHANGELOG.md"))
 notes = sort(filter(endswith(".md"), readdir(joinpath(DOCS, "notes"))))
 for f in notes
     cp(joinpath(DOCS, "notes", f), joinpath(GEN, f))
@@ -33,6 +34,7 @@ makedocs(
         "Research: the skew power law does not measure H" => "generated/powerlaw_H.md",
         "Theory notes" => ["generated/" * f for f in notes],
         "Roadmap" => "generated/roadmap.md",
+        "Changelog" => "generated/CHANGELOG.md",
         "Rough Heston spec" => "generated/rough_heston_spec.md",
     ],
     checkdocs = :exports,

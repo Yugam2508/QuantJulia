@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use QuantJulia in research, please cite it as below."
+title: "QuantJulia: differentiable option pricing and rough-volatility calibration in Julia"
+type: software
+authors:
+  - alias: Yugam2508
+version: 0.2.0
+date-released: 2026-10-16
+license: MIT
+repository-code: "https://github.com/Yugam2508/QuantJulia"
+url: "https://yugam2508.github.io/QuantJulia/dev/"
+abstract: >-
+  A Julia library for option pricing and volatility-model calibration with
+  automatic differentiation throughout. It covers Black-Scholes, Heston, rough
+  Heston (fractional Riccati solver), lifted Heston, rough Bergomi and jump
+  models; Fourier (Gil-Pelaez, COS) and reproducible multithreaded Monte Carlo
+  pricing; SVI/SSVI and Dupire local volatility; American, barrier and Asian
+  options; yield curves and cash dividends; and calibration diagnostics. It is
+  cross-validated against QuantLib, and includes a study showing that the ATM
+  skew power law does not identify the Hurst exponent of rough Heston.
+keywords:
+  - option pricing
+  - rough volatility
+  - Heston model
+  - calibration
+  - automatic differentiation
+  - Monte Carlo
+  - Julia
